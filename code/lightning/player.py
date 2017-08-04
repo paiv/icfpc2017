@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 import io
 import json
+import os
 import sys
 
+from datetime import datetime
 from collections import OrderedDict
 
 
 class Logger:
-    def __init__(self):
-        self.file = io.open('logger.log', 'w')
+    def __init__(self, fn=None):
+        if fn is None:
+            os.makedirs('logs', exist_ok=True)
+            now = datetime.now().strftime('%Y%m%d%H%M%S')
+            fn = 'logs/%s.log' % now
+        self.file = io.open(fn, 'a')
+        self.file_name = fn
 
     def log(self, text):
         self.file.write(text)
@@ -107,13 +114,15 @@ class PunterPlayer(Player):
     def __init__(self):
         super().__init__()
         self.state = self.STATE_SETUP
-        self.logger = Logger()
 
     def move(self, game):
-        self.logger.log('> received')
-        self.logger.log(json.dumps(game))
-
         self._unpack_state(game)
+
+        logger = Logger(self.logfile)
+        self.logfile = logger.file_name
+
+        logger.log('> received')
+        logger.log(json.dumps(game))
 
         response = OrderedDict()
 
@@ -125,14 +134,15 @@ class PunterPlayer(Player):
         if response is not None:
             response = self._pack_state(response)
 
-            self.logger.log('< response')
-            self.logger.log(json.dumps(response))
+            logger.log('< response')
+            logger.log(json.dumps(response))
             return response
 
     def _unpack_state(self, game):
         self.player_state = game.get('state', None) or dict()
         x = self.player_state
 
+        self.logfile = x.get('logfile', None)
         self.state = x.get('state', None) or self.STATE_SETUP
         self.player_id = x.get('player_id', None)
         self.players = x.get('players', 0)
@@ -140,6 +150,7 @@ class PunterPlayer(Player):
 
     def _pack_state(self, response):
         x = self.player_state
+        x['logfile'] = self.logfile
         x['state'] = self.state
         x['player_id'] = self.player_id
         x['players'] = self.players
