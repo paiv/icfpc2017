@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import random
 import sys
 
 from datetime import datetime
@@ -17,8 +18,10 @@ class Logger:
         self.file = io.open(fn, 'a')
         self.file_name = fn
 
-    def log(self, text):
+    def log(self, text, *args):
         self.file.write(text)
+        for arg in args:
+            self.file.write(str(arg))
         self.file.write('\n')
 
 
@@ -118,11 +121,11 @@ class PunterPlayer(Player):
     def move(self, game):
         self._unpack_state(game)
 
-        logger = Logger(self.logfile)
-        self.logfile = logger.file_name
+        self.logger = Logger(self.logfile)
+        self.logfile = self.logger.file_name
 
-        logger.log('> received')
-        logger.log(json.dumps(game))
+        self.logger.log('> received')
+        self.logger.log(json.dumps(game))
 
         response = OrderedDict()
 
@@ -134,11 +137,14 @@ class PunterPlayer(Player):
         if response is not None:
             response = self._pack_state(response)
 
-            logger.log('< response')
-            logger.log(json.dumps(response))
+            self.logger.log('< response')
+            self.logger.log(json.dumps(response))
             return response
 
     def _unpack_state(self, game):
+        move = game.get('move', None) or dict()
+        self.last_moves = move.get('moves', None) or []
+
         self.player_state = game.get('state', None) or dict()
         x = self.player_state
 
@@ -146,7 +152,10 @@ class PunterPlayer(Player):
         self.state = x.get('state', None) or self.STATE_SETUP
         self.player_id = x.get('player_id', None)
         self.players = x.get('players', 0)
-        self.map = x.get('map', {})
+        self.map = x.get('map', None) or dict()
+
+        claims = x.get('claims', list())
+        self.claims = set((r[0], r[1]) for r in claims)
 
     def _pack_state(self, response):
         x = self.player_state
@@ -155,6 +164,7 @@ class PunterPlayer(Player):
         x['player_id'] = self.player_id
         x['players'] = self.players
         x['map'] = self.map
+        x['claims'] = list(self.claims)
         response['state'] = x
         return response
 
@@ -169,7 +179,21 @@ class PunterPlayer(Player):
         if request.get('stop', None) is not None:
             self.state = self.STATE_SCORING
         else:
+            return self.make_move()
+
+    def make_move(self):
+        self.process_moves()
+        river = self.make_claim()
+        if river is not None:
+            return self.api_claim(river)
+        else:
             return self.api_pass()
+
+    def process_moves(self):
+        pass
+
+    def make_claim(self):
+        pass
 
     def api_ready(self):
         return {'ready': self.player_id}
@@ -177,9 +201,31 @@ class PunterPlayer(Player):
     def api_pass(self):
         return {'pass': {'punter': self.player_id}}
 
+    def api_claim(self, river):
+        return {'claim': {'punter': self.player_id, 'source': river[0], 'target': river[1]}}
+
 
 class NoopPlayer(PunterPlayer):
     pass
+
+
+class RandomPlayer(PunterPlayer):
+    def process_moves(self):
+        claims = set()
+        for move in self.last_moves:
+            claim = move.get('claim', None)
+            if claim is not None:
+                claims.add((claim['source'], claim['target']))
+                claims.add((claim['target'], claim['source']))
+        self.claims |= claims
+
+    def make_claim(self):
+        rivers = self.map['rivers']
+        rivers = [(r['source'], r['target']) for r in rivers]
+        rivers = set(rivers) - self.claims
+        if len(rivers) > 0:
+            claim = random.choice(list(rivers))
+            return claim
 
 
 def run_player(player):
@@ -190,7 +236,7 @@ def run_player(player):
 
 
 def play():
-    player = NoopPlayer()
+    player = RandomPlayer()
     run_player(player)
 
 
