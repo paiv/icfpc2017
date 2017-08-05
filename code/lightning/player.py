@@ -10,12 +10,14 @@ from collections import OrderedDict
 
 
 class Logger:
-    def __init__(self, fn=None):
+    def __init__(self, fn=None, overwrite=False):
         if fn is None:
             os.makedirs('logs', exist_ok=True)
             now = datetime.now().strftime('%Y%m%d%H%M%S')
             fn = 'logs/%s.log' % now
-        self.file = io.open(fn, 'a')
+
+        mode = 'w' if overwrite else 'a'
+        self.file = io.open(fn, mode, buffering=1)
         self.file_name = fn
 
     def log(self, text, *args):
@@ -23,6 +25,17 @@ class Logger:
         for arg in args:
             self.file.write(str(arg))
         self.file.write('\n')
+
+
+# logger = Logger('offline_player.log', overwrite=True)
+
+
+class PunterError(Exception):
+    pass
+
+
+class PunterTransportError(PunterError):
+    pass
 
 
 class PunterTransport:
@@ -104,19 +117,20 @@ class PunterStdioTransport(PunterFileTransport):
         super().__init__(sys.stdin.fileno(), sys.stdout.fileno())
 
 
-class Player:
-    def move(self, game):
-        pass
-
-
-class PunterPlayer(Player):
+class PunterPlayer:
+    STATE_HANDSHAKE = 0
     STATE_SETUP = 1
     STATE_GAMEPLAY = 2
     STATE_SCORING = 3
 
     def __init__(self):
         super().__init__()
-        self.state = self.STATE_SETUP
+        self.name = 'player'
+        self.state = self.STATE_HANDSHAKE
+
+    def handshake(self, response=None):
+        if response is None:
+            return self._api_me()
 
     def move(self, game):
         self._unpack_state(game)
@@ -158,6 +172,7 @@ class PunterPlayer(Player):
         self.claims = set((r[0], r[1]) for r in claims)
 
     def _pack_state(self, response):
+        response = OrderedDict(response)
         x = self.player_state
         x['logfile'] = self.logfile
         x['state'] = self.state
@@ -173,7 +188,7 @@ class PunterPlayer(Player):
         self.map = request.get('map', None)
         self.players = request.get('punters', None)
         self.state = self.STATE_GAMEPLAY
-        return self.api_ready()
+        return self._api_ready()
 
     def gameplay(self, request):
         if request.get('stop', None) is not None:
@@ -185,9 +200,9 @@ class PunterPlayer(Player):
         self.process_moves()
         river = self.make_claim()
         if river is not None:
-            return self.api_claim(river)
+            return self._api_claim(river)
         else:
-            return self.api_pass()
+            return self._api_pass()
 
     def process_moves(self):
         pass
@@ -195,21 +210,30 @@ class PunterPlayer(Player):
     def make_claim(self):
         pass
 
-    def api_ready(self):
+    def _api_me(self):
+        return {'me': self.name}
+
+    def _api_ready(self):
         return {'ready': self.player_id}
 
-    def api_pass(self):
+    def _api_pass(self):
         return {'pass': {'punter': self.player_id}}
 
-    def api_claim(self, river):
+    def _api_claim(self, river):
         return {'claim': {'punter': self.player_id, 'source': river[0], 'target': river[1]}}
 
 
 class NoopPlayer(PunterPlayer):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.name = 'noop'
 
 
 class RandomPlayer(PunterPlayer):
+    def __init__(self):
+        super().__init__()
+        self.name = 'random'
+
     def process_moves(self):
         claims = set()
         for move in self.last_moves:
@@ -228,16 +252,27 @@ class RandomPlayer(PunterPlayer):
             return claim
 
 
-def run_player(player):
-    transport = PunterStdioTransport()
-    message = transport.receive()
-    response = player.move(message)
-    transport.send(response)
+class OfflinePlayer:
+    def __init__(self, player):
+        self.player = player
+        self.transport = PunterStdioTransport()
+
+    def run(self):
+        message = self.player.handshake()
+        self.transport.send(message)
+
+        message = self.transport.receive()
+        self.player.handshake(message)
+
+        message = self.transport.receive()
+        response = self.player.move(message)
+        self.transport.send(response)
 
 
 def play():
     player = RandomPlayer()
-    run_player(player)
+    controller = OfflinePlayer(player)
+    controller.run()
 
 
 if __name__ == '__main__':

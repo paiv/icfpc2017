@@ -29,8 +29,6 @@ class PunterTransport:
         self.write(packet)
 
     def receive(self):
-        # s,_,_ = select.select([self.socket], [], [], 10)
-
         chunks = []
 
         total = 20
@@ -77,16 +75,10 @@ class PunterTransport:
 
 
 class PunterFileTransport(PunterTransport):
-    def __init__(self, rfd, wfd):
+    def __init__(self, read_file, write_file):
         super().__init__()
-        self.rfile = io.open(rfd, 'rb', 0)
-        self.wfile = io.open(wfd, 'wb', 0)
-        self.samefds = rfd == wfd
-
-    def close(self):
-        self.rfile.close()
-        if not self.samefds:
-            self.wfile.close()
+        self.rfile = read_file
+        self.wfile = write_file
 
     def write(self, packet):
         self.wfile.write(packet)
@@ -95,7 +87,20 @@ class PunterFileTransport(PunterTransport):
         return self.rfile.read(n)
 
 
-class PunterSocketTransport(PunterFileTransport):
+class PunterFilenoTransport(PunterFileTransport):
+    def __init__(self, rfd, wfd):
+        self.rfile = io.open(rfd, 'rb', 0)
+        self.wfile = io.open(wfd, 'wb', 0)
+        self.samefds = rfd == wfd
+        super().__init__(self.rfile, self.wfile)
+
+    def close(self):
+        self.rfile.close()
+        if not self.samefds:
+            self.wfile.close()
+
+
+class PunterSocketTransport(PunterFilenoTransport):
     def __init__(self, socket):
         super().__init__(rfd=socket.fileno(), wfd=socket.fileno())
         self.socket = socket
@@ -130,33 +135,60 @@ class Player:
 
 
 class OfflinePlayer(Player):
+
     def __init__(self, cmd, name=None):
         self.cmd = cmd
         self.name = name or 'offline-player'
-        self.stdout = None
         self.state = None
+        self.proc = None
+        self.transport = None
 
-    def ready(self):
-        return self.state.get('score', None) is None
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def close(self):
+        if self.proc is not None:
+            self.proc.kill()
+            self.proc = None
+
+    def _open_process(self):
+        if self.proc is None:
+            self.proc = subprocess.Popen(self.cmd, bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            self.transport = PunterFileTransport(self.proc.stdout, self.proc.stdin)
+            self._handshake()
+
+    def _handshake(self):
+        handshake = self.transport.receive()
+
+        if 'me' in handshake:
+            name = handshake.get('me', None)
+
+            response = {'you': name}
+            self.transport.send(response)
+        else:
+            raise PunterError()
 
     def read(self):
-        if self.stdout is not None:
-            transport = PunterMemoryTransport(self.stdout)
-            response = transport.receive()
-            self.state = response.pop('state', None)
-            return response
+        self._open_process()
+
+        response = self.transport.receive()
+
+        self.state = response.pop('state', None)
+
+        self.close()
+
+        return response
 
     def write(self, response):
-        transport = PunterMemoryTransport()
+        self._open_process()
 
         response = OrderedDict(response)
         response['state'] = self.state
 
-        transport.send(response)
-        packet = transport.write_buffer.getvalue()
-
-        res = subprocess.run(self.cmd, input=packet, timeout=1, stdout=subprocess.PIPE, check=True)
-        self.stdout = res.stdout
+        self.transport.send(response)
 
 
 class OnlinePlayer(Player):
@@ -167,19 +199,27 @@ class OnlinePlayer(Player):
     def __init__(self, offline_player):
         self.player = offline_player
         self.state = self.STATE_HANDSHAKE
+        self.handshake_complete = False
 
     def ready(self):
         return self.state != self.STATE_SCORING
 
     def read(self):
         if self.state == self.STATE_HANDSHAKE:
-            return self._handshake()
+            if self.handshake_complete:
+                self.state = self.STATE_GAMEPLAY
+            else:
+                return self._handshake()
         else:
             return self.player.read()
 
     def write(self, response):
+        timeout = response.get('timeout', None)
+
         if self.state == self.STATE_HANDSHAKE:
             return self._handshake(response)
+        elif timeout is not None:
+            print('** timeout is ', timeout)
         else:
             if response.get('stop', None) is not None:
                 self.state = self.STATE_SCORING
@@ -189,7 +229,7 @@ class OnlinePlayer(Player):
         if response is None:
             return self._api_me()
         else:
-            self.state = self.STATE_GAMEPLAY
+            self.handshake_complete = True
 
     def _api_me(self):
         return {'me': self.player.name}
