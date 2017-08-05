@@ -4,4 +4,4 @@ project(icfp2017_paiv)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(app main.cpp)
+add_executable(punter main.cpp)

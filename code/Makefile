@@ -9,12 +9,12 @@ release: TARGET_DIR=build/release
 debug: CMAKE_ARGS=-DCMAKE_BUILD_TYPE=Debug
 debug: TARGET_DIR=build/debug
 
-release debug: app
+release debug: punter
 
-app: $(TARGET_DIR)/app
-.PHONY: app
+punter: $(TARGET_DIR)/punter
+.PHONY: punter
 
-$(TARGET_DIR)/app: $(wildcard src/*cpp) $(wildcard src/*hpp) $(TARGET_DIR)/Makefile
+$(TARGET_DIR)/punter: $(wildcard src/*cpp) $(wildcard src/*hpp) $(TARGET_DIR)/Makefile
 	cd $(TARGET_DIR) && $(MAKE)
 
 $(TARGET_DIR)/Makefile:

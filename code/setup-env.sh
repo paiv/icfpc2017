@@ -8,7 +8,7 @@ else
   VENV="python -m venv"
 fi
 
-$VENV -p python3.5 .virtualenv/icfpc
+$VENV -p python3 .virtualenv/icfpc
 
 . activate
 
