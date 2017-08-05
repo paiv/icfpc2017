@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 import io
 import json
 import socket
@@ -308,4 +308,9 @@ def play(mapid, port=None):
 
 
 if __name__ == '__main__':
-    play(PunterServer.MAP1_SAMPLE, port=None)
+    import sys
+    port = None
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+
+    play(PunterServer.MAP1_SAMPLE, port=port)
