@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 import io
 import json
 import os
@@ -66,7 +66,8 @@ class PunterTransport:
             if chunk == b'':
                 raise PunterTransportError()
 
-            chunks.append(chunk)
+            if chunk is not None:
+                chunks.append(chunk)
 
             data = str(b''.join(chunks), 'utf-8')
             parts = data.split(':', 1)
@@ -82,8 +83,9 @@ class PunterTransport:
             if chunk == b'':
                 raise PunterTransportError()
 
-            chunks.append(chunk)
-            total -= len(chunk)
+            if chunk is not None:
+                chunks.append(chunk)
+                total -= len(chunk)
 
         response = b''.join(chunks)
         response = body + str(response, 'utf-8')
@@ -101,16 +103,10 @@ class PunterTransport:
 
 
 class PunterFileTransport(PunterTransport):
-    def __init__(self, rfd, wfd):
+    def __init__(self, read_file, write_file):
         super().__init__()
-        self.rfile = io.open(rfd, 'rb', 0)
-        self.wfile = io.open(wfd, 'wb', 0)
-        self.samefds = rfd == wfd
-
-    def close(self):
-        self.rfile.close()
-        if not self.samefds:
-            self.wfile.close()
+        self.rfile = read_file
+        self.wfile = write_file
 
     def write(self, packet):
         self.wfile.write(packet)
@@ -119,9 +115,22 @@ class PunterFileTransport(PunterTransport):
         return self.rfile.read(n)
 
 
+class PunterFilenoTransport(PunterFileTransport):
+    def __init__(self, rfd, wfd):
+        self.rfile = io.open(rfd, 'rb', 0)
+        self.wfile = io.open(wfd, 'wb', 0)
+        self.samefds = rfd == wfd
+        super().__init__(self.rfile, self.wfile)
+
+    def close(self):
+        self.rfile.close()
+        if not self.samefds:
+            self.wfile.close()
+
+
 class PunterStdioTransport(PunterFileTransport):
     def __init__(self):
-        super().__init__(sys.stdin.fileno(), sys.stdout.fileno())
+        super().__init__(sys.stdin.buffer, sys.stdout.buffer)
 
 
 class PunterPlayer:
@@ -194,7 +203,8 @@ class PunterPlayer:
     def setup(self, request):
         self.player_id = request.get('punter', None)
         self.map = request.get('map', None)
-        self.map.pop('sites') # not needed for now
+        if self.map is not None:
+            self.map.pop('sites') # not needed for now
         self.players = request.get('punters', None)
         self.state = self.STATE_GAMEPLAY
         return self._api_ready()
@@ -232,6 +242,23 @@ class PunterPlayer:
         return {'claim': {'punter': self.player_id, 'source': river[0], 'target': river[1]}}
 
 
+class OfflinePlayer:
+    def __init__(self, player):
+        self.player = player
+        self.transport = PunterStdioTransport()
+
+    def run(self):
+        message = self.player.handshake()
+        self.transport.send(message)
+
+        message = self.transport.receive()
+        self.player.handshake(message)
+
+        message = self.transport.receive()
+        response = self.player.move(message)
+        self.transport.send(response)
+
+
 class NoopPlayer(PunterPlayer):
     def __init__(self):
         super().__init__()
@@ -261,23 +288,6 @@ class RandomPlayer(PunterPlayer):
         if len(rivers) > 0:
             claim = random.choice(list(rivers))
             return claim
-
-
-class OfflinePlayer:
-    def __init__(self, player):
-        self.player = player
-        self.transport = PunterStdioTransport()
-
-    def run(self):
-        message = self.player.handshake()
-        self.transport.send(message)
-
-        message = self.transport.receive()
-        self.player.handshake(message)
-
-        message = self.transport.receive()
-        response = self.player.move(message)
-        self.transport.send(response)
 
 
 def play():

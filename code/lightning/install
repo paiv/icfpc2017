@@ -1,3 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
-cp src/player.py punter
+cat <<EOS > punter
+#!/bin/sh
+trap "exit" INT TERM
+trap "kill 0" EXIT
+python3.6 -u src/player.py
+EOS
+
+chmod +x punter

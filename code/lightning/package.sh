@@ -4,7 +4,9 @@ set -e
 TEAMID=${TEAMID:-"TEAMID"}
 TARGET="icfp-$TEAMID.tar.gz"
 
-rm "$TARGET"
+if [ -f "$TARGET" ]; then
+    rm "$TARGET"
+fi
 
 tar -czf "$TARGET" \
     install \
