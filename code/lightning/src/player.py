@@ -9,22 +9,29 @@ from datetime import datetime
 from collections import OrderedDict
 
 
+DEBUG=False
+
+
 class Logger:
     def __init__(self, fn=None, overwrite=False):
         if fn is None:
-            os.makedirs('logs', exist_ok=True)
             now = datetime.now().strftime('%Y%m%d%H%M%S')
             fn = 'logs/%s.log' % now
+            if DEBUG:
+                os.makedirs('logs', exist_ok=True)
 
-        mode = 'w' if overwrite else 'a'
-        self.file = io.open(fn, mode, buffering=1)
         self.file_name = fn
 
+        if DEBUG:
+            mode = 'w' if overwrite else 'a'
+            self.file = io.open(fn, mode, buffering=1)
+
     def log(self, text, *args):
-        self.file.write(text)
-        for arg in args:
-            self.file.write(str(arg))
-        self.file.write('\n')
+        if DEBUG:
+            self.file.write(text)
+            for arg in args:
+                self.file.write(str(arg))
+            self.file.write('\n')
 
 
 # logger = Logger('offline_player.log', overwrite=True)
@@ -125,7 +132,7 @@ class PunterPlayer:
 
     def __init__(self):
         super().__init__()
-        self.name = 'player'
+        self.name = 'paiv'
         self.state = self.STATE_HANDSHAKE
 
     def handshake(self, response=None):
@@ -174,7 +181,8 @@ class PunterPlayer:
     def _pack_state(self, response):
         response = OrderedDict(response)
         x = self.player_state
-        x['logfile'] = self.logfile
+        if DEBUG:
+            x['logfile'] = self.logfile
         x['state'] = self.state
         x['player_id'] = self.player_id
         x['players'] = self.players
@@ -186,6 +194,7 @@ class PunterPlayer:
     def setup(self, request):
         self.player_id = request.get('punter', None)
         self.map = request.get('map', None)
+        self.map.pop('sites') # not needed for now
         self.players = request.get('punters', None)
         self.state = self.STATE_GAMEPLAY
         return self._api_ready()
@@ -226,13 +235,15 @@ class PunterPlayer:
 class NoopPlayer(PunterPlayer):
     def __init__(self):
         super().__init__()
-        self.name = 'noop'
+        if DEBUG:
+            self.name = 'paiv-noop'
 
 
 class RandomPlayer(PunterPlayer):
     def __init__(self):
         super().__init__()
-        self.name = 'random'
+        if DEBUG:
+            self.name = 'paiv-random'
 
     def process_moves(self):
         claims = set()

@@ -299,7 +299,7 @@ class PunterServer:
 
 
 def play(mapid, port=None):
-    player = OfflinePlayer('./player.py')
+    player = OfflinePlayer('./src/player.py')
     player = OnlinePlayer(player)
 
     server = PunterServer(port=port)
