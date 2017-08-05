@@ -11,3 +11,5 @@ tar -czf "$TARGET" \
     PACKAGES \
     README \
     src/player.py
+
+md5 "$TARGET"
