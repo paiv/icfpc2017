@@ -35,7 +35,7 @@ class PunterTransport:
         body = ''
 
         while True:
-            chunk = self.read(total)
+            chunk = self.read(1)
             if chunk == b'':
                 raise PunterTransportError()
 

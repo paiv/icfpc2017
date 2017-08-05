@@ -62,7 +62,7 @@ class PunterTransport:
         body = ''
 
         while True:
-            chunk = self.read(total)
+            chunk = self.read(1)
             if chunk == b'':
                 raise PunterTransportError()
 
@@ -77,6 +77,7 @@ class PunterTransport:
                 break
 
         chunks = []
+        body_size = total
 
         while total > 0:
             chunk = self.read(total)
@@ -183,9 +184,13 @@ class PunterPlayer:
         self.player_id = x.get('player_id', None)
         self.players = x.get('players', 0)
         self.map = x.get('map', None) or dict()
+        self.map['rivers'] = [tuple(sorted((r[0], r[1]))) for r in self.map.get('rivers', list())]
 
         claims = x.get('claims', list())
-        self.claims = set((r[0], r[1]) for r in claims)
+        self.claims = set(tuple(sorted((r[0], r[1]))) for r in claims)
+
+        my_claims = x.get('my_claims', list())
+        self.my_claims = set(tuple(sorted((r[0], r[1]))) for r in my_claims)
 
     def _pack_state(self, response):
         response = OrderedDict(response)
@@ -197,17 +202,30 @@ class PunterPlayer:
         x['players'] = self.players
         x['map'] = self.map
         x['claims'] = list(self.claims)
+        x['my_claims'] = list(self.my_claims)
         response['state'] = x
         return response
 
     def setup(self, request):
         self.player_id = request.get('punter', None)
         self.map = request.get('map', None)
+
         if self.map is not None:
-            self.map.pop('sites') # not needed for now
+            rivers = self.map.get('rivers', list())
+            rivers = [tuple(sorted((r['source'], r['target']))) for r in rivers]
+            self.map['rivers'] = rivers
+
+            sites = self.map.pop('sites', list())
+            sites = [x['id'] for x in sites]
+            self.map['sites'] = sites
+
         self.players = request.get('punters', None)
         self.state = self.STATE_GAMEPLAY
+        self.extra_setup()
         return self._api_ready()
+
+    def extra_setup(self):
+        pass
 
     def gameplay(self, request):
         if request.get('stop', None) is not None:
@@ -274,24 +292,70 @@ class RandomPlayer(PunterPlayer):
 
     def process_moves(self):
         claims = set()
+
         for move in self.last_moves:
             claim = move.get('claim', None)
             if claim is not None:
-                claims.add((claim['source'], claim['target']))
-                claims.add((claim['target'], claim['source']))
+                claims.add(tuple(sorted((claim['source'], claim['target']))))
+
         self.claims |= claims
 
     def make_claim(self):
         rivers = self.map['rivers']
-        rivers = [(r['source'], r['target']) for r in rivers]
         rivers = set(rivers) - self.claims
         if len(rivers) > 0:
             claim = random.choice(list(rivers))
             return claim
 
 
+class RandomMinesPlayer(RandomPlayer):
+    def __init__(self):
+        super().__init__()
+        if DEBUG:
+            self.name = 'paiv-random-mines'
+
+    def process_moves(self):
+        claims = set()
+        my_claims = set()
+
+        for move in self.last_moves:
+            claim = move.get('claim', None)
+            if claim is not None:
+                r = tuple(sorted((claim['source'], claim['target'])))
+                claims.add(r)
+                if claim['punter'] == self.player_id:
+                    my_claims.add(r)
+
+        self.claims |= claims
+        self.my_claims |= my_claims
+
+    def _rivers_from(self, site):
+        rivers = self.map['rivers']
+        res = set()
+        for river in rivers:
+            if river[0] == site or river[1] == site:
+                res.add(river)
+        return res
+
+    def make_claim(self):
+        visited = set()
+        sites = set(self.map.get('mines', list()))
+
+        while len(sites) > 0:
+            rivers = set(r for site in sites for r in self._rivers_from(site))
+
+            avail = rivers - self.claims
+            if len(avail) > 0:
+                claim = random.choice(list(avail))
+                return claim
+
+            visited |= sites
+            paths = rivers & self.my_claims
+            sites = set(x for p in paths for x in p) - visited
+
+
 def play():
-    player = RandomPlayer()
+    player = RandomMinesPlayer()
     controller = OfflinePlayer(player)
     controller.run()
 
