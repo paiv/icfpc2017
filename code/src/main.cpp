@@ -44,6 +44,7 @@ typedef uint8_t u8;
 
 typedef vector<u32> uvec;
 typedef vector<pair<u32,u32>> uuvec;
+typedef unordered_set<u32> uset;
 typedef unordered_set<pair<u32,u32>> uuset;
 
 
@@ -70,6 +71,19 @@ _difference(const unordered_set<T>& a, const unordered_set<T>& b) {
 
     copy_if(a.begin(), a.end(), inserter(res, res.begin()),
         [&b] (auto const& x) { return b.find(x) == b.end(); }
+    );
+
+    return res;
+}
+
+
+template<typename T>
+unordered_set<T>
+_intersection(const unordered_set<T>& a, const unordered_set<T>& b) {
+    unordered_set<T> res;
+
+    copy_if(a.begin(), a.end(), inserter(res, res.begin()),
+        [&b] (auto const& x) { return b.find(x) != b.end(); }
     );
 
     return res;
@@ -357,6 +371,7 @@ typedef struct api_state {
     s32 player_id;
     game_map map;
     uuset claims;
+    uuset my_claims;
 } api_state;
 
 
@@ -560,6 +575,7 @@ _parse_state(const jsonval& obj, const char* name) {
             state.player_id = _json_parse_int(val, "me", -1);
             state.map = _parse_game_map_state(val, "map");
             state.claims = _json_parse_int_int_array_set<u32>(val, "claims");
+            state.my_claims = _json_parse_int_int_array_set<u32>(val, "my");
         }
     }
     return state;
@@ -574,6 +590,7 @@ _code_state(jsonval& obj, const char* name, const api_state& state, Alloc& alloc
     _json_add_int(packet, "me", state.player_id, allocator);
     _code_game_map_state(packet, "map", state.map, allocator);
     _json_add_int_int_array(packet, "claims", state.claims, allocator);
+    _json_add_int_int_array(packet, "my", state.my_claims, allocator);
 
     obj.AddMember(StringRef(name), packet, allocator);
 }
@@ -730,18 +747,52 @@ setup(const api& message) {
 }
 
 
+void
+scoring(const api& message) {
+    // log("scoring");
+}
+
+
+uuset
+_rivers_from_all(const uuset& rivers, const uset& sites) {
+    uuset res;
+    for (auto &r : rivers) {
+        if (sites.find(get<0>(r)) != sites.end() || sites.find(get<1>(r)) != sites.end()) {
+            res.insert(r);
+        }
+    }
+    return res;
+}
+
+
+uset
+_sites_on_all(const uuset& rivers) {
+    uset sites;
+    for (auto& r : rivers) {
+        sites.insert(get<0>(r));
+        sites.insert(get<1>(r));
+    }
+    return sites;
+}
+
+
 api
 gameplay(const api& message) {
     api response = { api_message_type::pass };
 
     response.player_id = message.state.player_id;
-    response.state = message.state;
+    auto state = message.state;
 
     for (auto& m : message.moves) {
         if (m.type == move_type::claim) {
-            response.state.claims.insert(m.claim);
+            state.claims.insert(m.claim);
+
+            if (m.player_id == state.player_id) {
+                state.my_claims.insert(m.claim);
+            }
         }
         else if (m.type == move_type::splurge) {
+            u8 is_mine = m.player_id == state.player_id;
             auto end = m.route.end();
             auto p = m.route.begin();
             auto q = p + 1;
@@ -749,12 +800,17 @@ gameplay(const api& message) {
                 auto x = *p;
                 auto y = *q;
                 auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
-                response.state.claims.insert(claim);
+                state.claims.insert(claim);
+                if (is_mine) {
+                    state.my_claims.insert(claim);
+                }
             }
         }
     }
 
-    auto avail = _difference(response.state.map.rivers, response.state.claims);
+
+    #if 0
+    auto avail = _difference(state.map.rivers, state.claims);
 
     if (avail.size() > 0) {
         auto sel = random_choice(begin(avail), end(avail));
@@ -762,18 +818,40 @@ gameplay(const api& message) {
         response.type = api_message_type::claim;
         response.claim = *sel;
     }
+    #endif
+
+
+    #if 1
+    uset visited;
+    uset sites(begin(state.map.mines), end(state.map.mines));
+
+    while (sites.size() > 0) {
+        auto rivers = _rivers_from_all(state.map.rivers, sites);
+        auto avail = _difference(rivers, state.claims);
+
+        if (avail.size() > 0) {
+            auto sel = random_choice(begin(avail), end(avail));
+
+            response.type = api_message_type::claim;
+            response.claim = *sel;
+            break;
+        }
+
+        copy(begin(sites), end(sites), inserter(visited, visited.begin()));
+        auto paths = _intersection(rivers, state.my_claims);
+        sites = _difference(_sites_on_all(paths), visited);
+    }
+    #endif
+
+
+    response.state = state;
 
     return response;
 }
 
 
-void
-scoring(const api& message) {
-    // log("scoring");
 }
 
-
-}
 
 int main(int argc, char* argv[]) {
 
