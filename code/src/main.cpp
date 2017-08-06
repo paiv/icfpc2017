@@ -190,6 +190,22 @@ _json_parse_int_array(const jsonval& obj, const char* name) {
 }
 
 
+template<typename T>
+vector<T>
+_json_parse_int_array(const jsonval& obj, const char* name, const char* inner) {
+
+    if (obj.HasMember(name)) {
+        auto& val = obj[name];
+        if (val.IsObject()) {
+
+            return _json_parse_int_array<T>(val, inner);
+        }
+    }
+
+    return {};
+}
+
+
 template<typename T, typename P=pair<T,T>, typename Container=vector<P>>
 Container
 _json_parse_int_int_array(const jsonval& obj, const char* name) {
@@ -332,6 +348,7 @@ typedef struct move_t {
     move_type type;
     s32 player_id;
     pair<u32,u32> claim;
+    uvec route;
 } move_t;
 
 
@@ -464,18 +481,21 @@ _parse_moves(const jsonval& obj) {
     for (auto& v : obj.GetArray()) {
         if (v.IsObject()) {
             move_t m = { move_type::pass };
-            m.player_id = _json_parse_int(v, "pass", "punter");
 
             if (v.HasMember("pass")) {
+                m.player_id = _json_parse_int(v, "pass", "punter");
             }
             else if (v.HasMember("claim")) {
                 m.type = move_type::claim;
+                m.player_id = _json_parse_int(v, "claim", "punter");
                 u32 x = _json_parse_int(v, "claim", "source");
                 u32 y = _json_parse_int(v, "claim", "target");
                 m.claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
             }
             else if (v.HasMember("splurge")) {
                 m.type = move_type::splurge;
+                m.player_id = _json_parse_int(v, "splurge", "punter");
+                m.route = _json_parse_int_array<u32>(v, "splurge", "route");
             }
 
             moves.push_back(m);
@@ -719,6 +739,17 @@ gameplay(const api& message) {
     for (auto& m : message.moves) {
         if (m.type == move_type::claim) {
             response.state.claims.insert(m.claim);
+        }
+        else if (m.type == move_type::splurge) {
+            auto end = m.route.end();
+            auto p = m.route.begin();
+            auto q = p + 1;
+            for (; p != end && q != end; p++, q++) {
+                auto x = *p;
+                auto y = *q;
+                auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
+                response.state.claims.insert(claim);
+            }
         }
     }
 
