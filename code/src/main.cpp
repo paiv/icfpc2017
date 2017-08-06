@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <queue>
 #include <random>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "rapidjson/document.h"
@@ -42,6 +44,7 @@ typedef int8_t s8;
 typedef uint32_t u32;
 typedef uint8_t u8;
 
+typedef vector<s32> ivec;
 typedef vector<u32> uvec;
 typedef vector<pair<u32,u32>> uuvec;
 typedef unordered_set<u32> uset;
@@ -392,6 +395,7 @@ typedef struct api_state {
     game_map map;
     uusetvec claims;
     uuset all_claims;
+    ivec score;
 } api_state;
 
 
@@ -650,6 +654,7 @@ _parse_state(const jsonval& obj, const char* name) {
             state.map = _parse_game_map_state(val, "map");
             state.claims = _parse_claims(val, "claims", state.players);
             state.all_claims = _join_claims(state.claims);
+            state.score = _json_parse_int_array<s32>(val, "score");
         }
     }
     return state;
@@ -665,6 +670,7 @@ _code_state(jsonval& obj, const char* name, const api_state& state, Alloc& alloc
     _json_add_int(packet, "players", state.players, allocator);
     _code_game_map_state(packet, "map", state.map, allocator);
     _code_claims(packet, "claims", state.claims, allocator);
+    _json_add_int_array(packet, "score", state.score, allocator);
 
     obj.AddMember(StringRef(name), packet, allocator);
 }
@@ -817,6 +823,7 @@ setup(const api& message) {
     state.players = message.players;
     state.map = message.board;
     state.claims = uusetvec(state.players);
+    state.score = ivec(state.players);
 
     response.state = state;
 
@@ -853,13 +860,8 @@ _sites_on_all(const uuset& rivers) {
 }
 
 
-api
-gameplay(const api& message) {
-    api response = { api_message_type::pass };
-
-    response.player_id = message.state.player_id;
-    auto state = message.state;
-
+void
+_update_claims(const api& message, api_state& state) {
     for (auto& m : message.moves) {
         if (m.type == move_type::claim) {
             state.claims[m.player_id].insert(m.claim);
@@ -879,9 +881,109 @@ gameplay(const api& message) {
             }
         }
     }
+}
 
 
-    #if 0
+void
+_calc_shortest_distance(u32* dist, const game_map& board, const uuset& rivers) {
+    u32 nsites = board.sites.size();
+    memset(dist, 0, sizeof(dist[0]) * nsites * nsites);
+
+
+    unordered_map<u32, uuset> springs;
+    for (auto x : board.sites) {
+        springs[x] = {};
+    }
+    for (auto& r : rivers) {
+        springs[get<0>(r)].insert(r);
+        springs[get<1>(r)].insert(r);
+    }
+
+
+    using wave_site = pair<u32, u32>;
+
+    struct wave_order {
+        bool operator () (const wave_site& a, const wave_site& b) {
+            return get<0>(a) > get<0>(b);
+        }
+    };
+
+
+    for (auto mine : board.mines) {
+
+        priority_queue<wave_site, uuvec, wave_order> fringe;
+        unordered_set<u32> visited;
+        fringe.emplace(0, mine);
+
+        while (fringe.size() > 0) {
+            auto& it = fringe.top();
+            auto wave = get<0>(it);
+            auto site = get<1>(it);
+            fringe.pop();
+
+            if (visited.find(site) != end(visited)) {
+                continue;
+            }
+
+            size_t offset = mine * nsites + site;
+            auto x = dist[offset];
+            auto d = wave * wave;
+            dist[offset] = (x > 0) ? min(x, d) : d;
+
+            visited.insert(site);
+
+            for (auto& r : springs[site]) {
+                if (get<0>(r) != site)
+                    fringe.emplace(wave + 1, get<0>(r));
+                if (get<1>(r) != site)
+                    fringe.emplace(wave + 1, get<1>(r));
+            }
+        }
+    }
+}
+
+
+void
+_update_score(api_state& state) {
+    u32 nsites = state.map.sites.size();
+
+    u32 dist[nsites][nsites];
+    u32 player_dist[nsites][nsites];
+
+    _calc_shortest_distance(&dist[0][0], state.map, state.map.rivers);
+
+
+    ivec score(state.players);
+
+    for (u32 player_id = 0; player_id < state.players; player_id++) {
+        auto& claims = state.claims[player_id];
+
+        _calc_shortest_distance(&player_dist[0][0], state.map, claims);
+
+
+        auto sites = _sites_on_all(claims);
+        u32 player_score = 0;
+
+        for (auto mine : state.map.mines) {
+            for (auto site : sites) {
+                // if connected mine-site
+                if (player_dist[mine][site] > 0) {
+                    // shortest distance squared
+                    player_score += dist[mine][site];
+                }
+            }
+        }
+
+        score[player_id] = player_score;
+    }
+
+    state.score = score;
+}
+
+
+#if 0
+void
+random_player(api_state& state, api& response) {
     auto avail = _difference(state.map.rivers, state.all_claims);
 
     if (avail.size() > 0) {
@@ -890,10 +992,13 @@ gameplay(const api& message) {
         response.type = api_message_type::claim;
         response.claim = *sel;
     }
-    #endif
+}
+#endif
 
 
-    #if 1
+#if 1
+void
+random_mines_player(api_state& state, api& response) {
     uset visited;
     uset sites(begin(state.map.mines), end(state.map.mines));
 
@@ -913,13 +1018,59 @@ gameplay(const api& message) {
         auto paths = _intersection(rivers, state.claims[state.player_id]);
         sites = _difference(_sites_on_all(paths), visited);
     }
-    #endif
+}
+#endif
+
+
+api
+gameplay(const api& message) {
+    api response = { api_message_type::pass };
+
+    response.player_id = message.state.player_id;
+    auto state = message.state;
+
+    _update_claims(message, state);
+    _update_score(state);
+
+
+    // random_player(state, response);
+    random_mines_player(state, response);
 
 
     response.state = state;
 
     return response;
 }
+
+
+#if 0
+int
+test() {
+    api_state state = {};
+
+    game_map sample_map = {};
+    sample_map.sites = { 4,1,3,6,5,0,7,2 };
+    sample_map.mines = { 1,5 };
+    sample_map.rivers = { {5,6},{3,4},{1,7},{1,3},{2,3},{4,5},{5,7},{6,7},{0,7},{3,5},{1,2},{0,1} };
+
+    state.player_id = 1;
+    state.players = 2;
+    state.map = sample_map;
+    state.claims = { { {4, 5} }, {} };
+    state.all_claims = { {3, 5}, {4, 5} };
+    state.score = {};
+
+    _update_score(state);
+
+    api message = { api_message_type::pass };
+    message.state = state;
+    auto packet = _code_message(message);
+
+    log(packet);
+
+    return 0;
+}
+#endif
 
 
 }
@@ -929,7 +1080,9 @@ int main(int argc, char* argv[]) {
 
     setvbuf(stdin, NULL, _IONBF, 0);
     setvbuf(stdout, NULL, _IONBF, 0);
-    setvbuf(stderr, NULL, _IOLBF, 1000);
+    setvbuf(stderr, NULL, _IOLBF, 16*1024);
+
+    // return paiv::test();
 
     return paiv::player();
 }
