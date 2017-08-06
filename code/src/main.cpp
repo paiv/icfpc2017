@@ -73,8 +73,8 @@ unordered_set<T>
 _difference(const unordered_set<T>& a, const unordered_set<T>& b) {
     unordered_set<T> res;
 
-    copy_if(a.begin(), a.end(), inserter(res, res.begin()),
-        [&b] (auto const& x) { return b.find(x) == b.end(); }
+    copy_if(begin(a), end(a), inserter(res, begin(res)),
+        [&b] (auto const& x) { return b.find(x) == end(b); }
     );
 
     return res;
@@ -86,10 +86,19 @@ unordered_set<T>
 _intersection(const unordered_set<T>& a, const unordered_set<T>& b) {
     unordered_set<T> res;
 
-    copy_if(a.begin(), a.end(), inserter(res, res.begin()),
-        [&b] (auto const& x) { return b.find(x) != b.end(); }
+    copy_if(begin(a), end(a), inserter(res, begin(res)),
+        [&b] (auto const& x) { return b.find(x) != end(b); }
     );
 
+    return res;
+}
+
+
+template<typename T>
+unordered_set<T>
+_union(const unordered_set<T>& a, const unordered_set<T>& b) {
+    unordered_set<T> res = a;
+    copy(begin(b), end(b), inserter(res, end(res)));
     return res;
 }
 
@@ -359,6 +368,8 @@ enum class api_message_type : s32 {
     ready,
     pass,
     claim,
+        // TODO: splurge,
+        // TODO: option,
     // server –> player
     you,
     setup,
@@ -378,6 +389,7 @@ enum class move_type : u8 {
     pass,
     claim,
     splurge,
+    // TODO: option,
 };
 
 
@@ -1009,9 +1021,9 @@ random_player(api_state& state, api& response) {
 #endif
 
 
-#if 1
+#if 0
 void
-random_mines_player(api_state& state, api& response) {
+random_mines_player(const api_state& state, api& response) {
     uset visited;
     uset sites(begin(state.map.mines), end(state.map.mines));
 
@@ -1035,6 +1047,71 @@ random_mines_player(api_state& state, api& response) {
 #endif
 
 
+move_t
+_best_move(const uuset& rivers, const api_state& state) {
+    move_t res = { move_type::pass };
+
+    if (rivers.size() > 0) {
+
+        s32 best_score = 0;
+        move_t best_move = res;
+
+        for (auto& r : rivers) {
+
+            auto claims = state.claims;
+            claims[state.player_id].insert(r);
+
+            auto score = _calc_score(state.map, state.players, claims);
+
+            if (score[state.player_id] > best_score) {
+                best_score = score[state.player_id];
+                best_move.type = move_type::claim;
+                best_move.claim = r;
+            }
+        }
+
+        if (best_score > state.score[state.player_id]) {
+            res = best_move;
+        }
+    }
+
+    return res;
+}
+
+
+#if 1
+void
+best_mines_player(const api_state& state, api& response) {
+
+    uset mines(begin(state.map.mines), end(state.map.mines));
+    auto sites = _union(mines, _sites_on_all(state.claims[state.player_id]));
+    auto rivers = _rivers_from_all(state.map.rivers, sites);
+    auto avail = _difference(rivers, state.all_claims);
+
+    move_t res = { move_type::pass };
+
+    if (avail.size() > 0) {
+        res = _best_move(avail, state);
+    }
+
+    switch (res.type) {
+
+        case move_type::pass:
+            response.type = api_message_type::pass;
+            break;
+
+        case move_type::claim:
+            response.type = api_message_type::claim;
+            response.claim = res.claim;
+            break;
+
+        default:
+            break;
+    }
+}
+#endif
+
+
 api
 gameplay(const api& message) {
     api response = { api_message_type::pass };
@@ -1047,7 +1124,8 @@ gameplay(const api& message) {
 
 
     // random_player(state, response);
-    random_mines_player(state, response);
+    // random_mines_player(state, response);
+    best_mines_player(state, response);
 
 
     response.state = state;
