@@ -943,33 +943,35 @@ _calc_shortest_distance(u32* dist, const game_map& board, const uuset& rivers) {
 }
 
 
-void
-_update_score(api_state& state) {
-    u32 nsites = state.map.sites.size();
+ivec
+_calc_score(const game_map& board, u32 players, const uusetvec& claims) {
+    u32 nsites = board.sites.size();
 
-    u32 dist[nsites][nsites];
-    u32 player_dist[nsites][nsites];
+    static u32* dist = nullptr;
+    if (dist == nullptr) {
+        dist = (u32*) malloc(sizeof(u32) * nsites * nsites);
+        _calc_shortest_distance(dist, board, board.rivers);
+    }
 
-    _calc_shortest_distance(&dist[0][0], state.map, state.map.rivers);
+    u32* player_dist = (u32*) malloc(sizeof(u32) * nsites * nsites);
+    ivec score(players);
+
+    for (u32 player_id = 0; player_id < players; player_id++) {
+        auto& player_claims = claims[player_id];
+
+        _calc_shortest_distance(player_dist, board, player_claims);
 
 
-    ivec score(state.players);
-
-    for (u32 player_id = 0; player_id < state.players; player_id++) {
-        auto& claims = state.claims[player_id];
-
-        _calc_shortest_distance(&player_dist[0][0], state.map, claims);
-
-
-        auto sites = _sites_on_all(claims);
+        auto sites = _sites_on_all(player_claims);
         u32 player_score = 0;
 
-        for (auto mine : state.map.mines) {
+        for (auto mine : board.mines) {
             for (auto site : sites) {
+                size_t offset = mine * nsites + site;
                 // if connected mine-site
-                if (player_dist[mine][site] > 0) {
+                if (player_dist[offset] > 0) {
                     // shortest distance squared
-                    player_score += dist[mine][site];
+                    player_score += dist[offset];
                 }
             }
         }
@@ -977,6 +979,13 @@ _update_score(api_state& state) {
         score[player_id] = player_score;
     }
 
+    return score;
+}
+
+
+void
+_update_score(api_state& state) {
+    auto score = _calc_score(state.map, state.players, state.claims);
     state.score = score;
 }
 
