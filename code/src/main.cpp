@@ -948,12 +948,16 @@ _calc_score(const game_map& board, u32 players, const uusetvec& claims) {
     u32 nsites = board.sites.size();
 
     static u32* dist = nullptr;
+    static u32* player_dist = nullptr;
+
     if (dist == nullptr) {
         dist = (u32*) malloc(sizeof(u32) * nsites * nsites);
+        player_dist = (u32*) malloc(sizeof(u32) * nsites * nsites);
+
         _calc_shortest_distance(dist, board, board.rivers);
     }
 
-    u32* player_dist = (u32*) malloc(sizeof(u32) * nsites * nsites);
+
     ivec score(players);
 
     for (u32 player_id = 0; player_id < players; player_id++) {
