@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <random>
@@ -368,7 +369,7 @@ typedef struct api {
     // me
     string player_name;
     // setup
-    game_map game_map;
+    game_map board;
         // players
         // settings: futures, splurges
     // move
@@ -589,7 +590,7 @@ _parse_message(const json& packet) {
     else if (packet.HasMember("map")) {
         message.type = api_message_type::setup;
         message.player_id = _json_parse_int(packet, "punter", -1);
-        message.game_map = _parse_game_map(packet, "map");
+        message.board = _parse_game_map(packet, "map");
         message.state = _parse_state(packet, "state");
     }
     else if (packet.HasMember("move")) {
@@ -721,7 +722,7 @@ setup(const api& message) {
 
     api_state state = {};
     state.player_id = message.player_id;
-    state.map = message.game_map;
+    state.map = message.board;
 
     response.state = state;
 
