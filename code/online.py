@@ -304,8 +304,9 @@ class PunterServer:
         return self.transport.receive()
 
 
-def play(mapid, port=None):
-    player = OfflinePlayer('build/release/punter')
+def play(mapid, port=None, cmd=None):
+    cmd = cmd or 'build/release/punter'
+    player = OfflinePlayer(cmd)
     player = OnlinePlayer(player)
 
     server = PunterServer(port=port)
@@ -315,8 +316,14 @@ def play(mapid, port=None):
 
 if __name__ == '__main__':
     import sys
+
     port = None
+    cmd = None
+
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
-    play(PunterServer.MAP1_SAMPLE, port=port)
+    if len(sys.argv) > 2:
+        cmd = sys.argv[2]
+
+    play(PunterServer.MAP1_SAMPLE, port=port, cmd=cmd)
