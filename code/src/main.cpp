@@ -46,6 +46,7 @@ typedef vector<u32> uvec;
 typedef vector<pair<u32,u32>> uuvec;
 typedef unordered_set<u32> uset;
 typedef unordered_set<pair<u32,u32>> uuset;
+typedef vector<uuset> uusetvec;
 
 
 #if VERBOSE
@@ -223,32 +224,48 @@ _json_parse_int_array(const jsonval& obj, const char* name, const char* inner) {
 
 template<typename T, typename P=pair<T,T>, typename Container=vector<P>>
 Container
-_json_parse_int_int_array(const jsonval& obj, const char* name) {
-    Container value;
+_json_parse_int_int_array(const jsonval& val) {
+    Container res;
 
-    if (obj.HasMember(name)) {
-        auto& val = obj[name];
-        if (val.IsArray()) {
+    for (auto& v : val.GetArray()) {
+        if (v.IsArray()) {
 
-            for (auto& v : val.GetArray()) {
-                if (v.IsArray()) {
+            auto vv = _json_parse_int_array<T>(v);
 
-                    auto vv = _json_parse_int_array<T>(v);
+            if (vv.size() >= 2) {
+                auto& x = vv[0];
+                auto& y = vv[1];
 
-                    if (vv.size() >= 2) {
-                        auto& x = vv[0];
-                        auto& y = vv[1];
+                auto pp = (x < y) ? make_pair(x, y) : make_pair(y, x);
 
-                        auto pp = (x < y) ? make_pair(x, y) : make_pair(y, x);
-
-                        value.insert(value.end(), pp);
-                    }
-                }
+                res.insert(res.end(), pp);
             }
         }
     }
 
-    return value;
+    return res;
+}
+
+
+template<typename T, typename P=pair<T,T>, typename Container=vector<P>>
+Container
+_json_parse_int_int_array(const jsonval& obj, const char* name) {
+    if (obj.HasMember(name)) {
+        auto& val = obj[name];
+        if (val.IsArray()) {
+
+            return _json_parse_int_int_array<T, P, Container>(val);
+        }
+    }
+
+    return {};
+}
+
+
+template<typename T, typename P=pair<T,T>>
+unordered_set<P>
+_json_parse_int_int_array_set(const jsonval& val) {
+    return _json_parse_int_int_array<T, P, unordered_set<P>>(val);
 }
 
 
@@ -277,7 +294,9 @@ _json_add_string(jsonval& obj, const char* name, const char* value, Alloc& alloc
 template<typename Alloc>
 void
 _json_add_string(jsonval& obj, const char* name, const string& value, Alloc& allocator) {
-    _json_add_string(obj, name, value.c_str(), allocator);
+    jsonval val;
+    val.SetString(value.c_str(), allocator);
+    obj.AddMember(StringRef(name), val, allocator);
 }
 
 
@@ -296,17 +315,24 @@ _json_add_int_array(jsonval& obj, const char* name, const vector<T>& value, Allo
 
 template<typename T, template <typename, typename> class P, typename Alloc>
 void
-_json_add_int_int_array(jsonval& obj, const char* name, const vector<P<T,T>>& value, Alloc& allocator) {
-    jsonval val(kArrayType);
-
+_json_fill_int_int_array(jsonval& arr, const unordered_set<P<T,T>>& value, Alloc& allocator) {
     for (auto& p : value) {
         jsonval vp(kArrayType);
 
         vp.PushBack(jsonval().SetInt(get<0>(p)), allocator);
         vp.PushBack(jsonval().SetInt(get<1>(p)), allocator);
 
-        val.PushBack(vp, allocator);
+        arr.PushBack(vp, allocator);
     }
+}
+
+
+template<typename T, template <typename, typename> class P, typename Alloc>
+void
+_json_add_int_int_array(jsonval& obj, const char* name, const vector<P<T,T>>& value, Alloc& allocator) {
+    jsonval val(kArrayType);
+
+    _json_fill_int_int_array(val, value, allocator);
 
     obj.AddMember(StringRef(name), val, allocator);
 }
@@ -317,14 +343,7 @@ void
 _json_add_int_int_array(jsonval& obj, const char* name, const unordered_set<P<T,T>>& value, Alloc& allocator) {
     jsonval val(kArrayType);
 
-    for (auto& p : value) {
-        jsonval vp(kArrayType);
-
-        vp.PushBack(jsonval().SetInt(get<0>(p)), allocator);
-        vp.PushBack(jsonval().SetInt(get<1>(p)), allocator);
-
-        val.PushBack(vp, allocator);
-    }
+    _json_fill_int_int_array(val, value, allocator);
 
     obj.AddMember(StringRef(name), val, allocator);
 }
@@ -369,9 +388,10 @@ typedef struct move_t {
 
 typedef struct api_state {
     s32 player_id;
+    u32 players;
     game_map map;
-    uuset claims;
-    uuset my_claims;
+    uusetvec claims;
+    uuset all_claims;
 } api_state;
 
 
@@ -385,7 +405,7 @@ typedef struct api {
     string player_name;
     // setup
     game_map board;
-        // players
+    u32 players;
         // settings: futures, splurges
     // move
     vector<move_t> moves;
@@ -564,6 +584,59 @@ _code_claim(jsonval& obj, const char* name, s32 player_id, const pair<u32,u32>& 
 }
 
 
+uusetvec
+_parse_claims(const jsonval& obj, const char* name, u32 total) {
+    uusetvec res(total);
+
+    if (obj.HasMember(name)) {
+        auto& val = obj[name];
+        if (val.IsArray()) {
+
+            u32 player_id = 0;
+
+            for (auto& p : val.GetArray()) {
+                if (player_id < res.size() && p.IsArray()) {
+                    auto claims = _json_parse_int_int_array_set<u32>(p);
+                    res[player_id] = claims;
+                }
+
+                player_id++;
+            }
+        }
+    }
+
+    return res;
+}
+
+
+uuset
+_join_claims(const uusetvec& claims) {
+    uuset res;
+
+    for (auto& v : claims) {
+        copy(begin(v), end(v), inserter(res, res.end()));
+    }
+
+    return res;
+}
+
+
+template<typename Alloc>
+void
+_code_claims(jsonval& obj, const char* name, const uusetvec& claims, Alloc& allocator) {
+    jsonval packet(kArrayType);
+
+    for (auto& v : claims) {
+        jsonval arr(kArrayType);
+        _json_fill_int_int_array(arr, v, allocator);
+
+        packet.PushBack(arr, allocator);
+    }
+
+    obj.AddMember(StringRef(name), packet, allocator);
+}
+
+
 api_state
 _parse_state(const jsonval& obj, const char* name) {
     api_state state = { .player_id = -1 };
@@ -573,9 +646,10 @@ _parse_state(const jsonval& obj, const char* name) {
         if (val.IsObject()) {
 
             state.player_id = _json_parse_int(val, "me", -1);
+            state.players = _json_parse_int(val, "players", 1);
             state.map = _parse_game_map_state(val, "map");
-            state.claims = _json_parse_int_int_array_set<u32>(val, "claims");
-            state.my_claims = _json_parse_int_int_array_set<u32>(val, "my");
+            state.claims = _parse_claims(val, "claims", state.players);
+            state.all_claims = _join_claims(state.claims);
         }
     }
     return state;
@@ -588,9 +662,9 @@ _code_state(jsonval& obj, const char* name, const api_state& state, Alloc& alloc
     jsonval packet(kObjectType);
 
     _json_add_int(packet, "me", state.player_id, allocator);
+    _json_add_int(packet, "players", state.players, allocator);
     _code_game_map_state(packet, "map", state.map, allocator);
-    _json_add_int_int_array(packet, "claims", state.claims, allocator);
-    _json_add_int_int_array(packet, "my", state.my_claims, allocator);
+    _code_claims(packet, "claims", state.claims, allocator);
 
     obj.AddMember(StringRef(name), packet, allocator);
 }
@@ -607,6 +681,7 @@ _parse_message(const json& packet) {
     else if (packet.HasMember("map")) {
         message.type = api_message_type::setup;
         message.player_id = _json_parse_int(packet, "punter", -1);
+        message.players = _json_parse_int(packet, "punters", 1);
         message.board = _parse_game_map(packet, "map");
         message.state = _parse_state(packet, "state");
     }
@@ -739,7 +814,9 @@ setup(const api& message) {
 
     api_state state = {};
     state.player_id = message.player_id;
+    state.players = message.players;
     state.map = message.board;
+    state.claims = uusetvec(state.players);
 
     response.state = state;
 
@@ -785,14 +862,10 @@ gameplay(const api& message) {
 
     for (auto& m : message.moves) {
         if (m.type == move_type::claim) {
-            state.claims.insert(m.claim);
-
-            if (m.player_id == state.player_id) {
-                state.my_claims.insert(m.claim);
-            }
+            state.claims[m.player_id].insert(m.claim);
+            state.all_claims.insert(m.claim);
         }
         else if (m.type == move_type::splurge) {
-            u8 is_mine = m.player_id == state.player_id;
             auto end = m.route.end();
             auto p = m.route.begin();
             auto q = p + 1;
@@ -800,17 +873,16 @@ gameplay(const api& message) {
                 auto x = *p;
                 auto y = *q;
                 auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
-                state.claims.insert(claim);
-                if (is_mine) {
-                    state.my_claims.insert(claim);
-                }
+
+                state.claims[m.player_id].insert(claim);
+                state.all_claims.insert(claim);
             }
         }
     }
 
 
     #if 0
-    auto avail = _difference(state.map.rivers, state.claims);
+    auto avail = _difference(state.map.rivers, state.all_claims);
 
     if (avail.size() > 0) {
         auto sel = random_choice(begin(avail), end(avail));
@@ -827,7 +899,7 @@ gameplay(const api& message) {
 
     while (sites.size() > 0) {
         auto rivers = _rivers_from_all(state.map.rivers, sites);
-        auto avail = _difference(rivers, state.claims);
+        auto avail = _difference(rivers, state.all_claims);
 
         if (avail.size() > 0) {
             auto sel = random_choice(begin(avail), end(avail));
@@ -838,7 +910,7 @@ gameplay(const api& message) {
         }
 
         copy(begin(sites), end(sites), inserter(visited, visited.begin()));
-        auto paths = _intersection(rivers, state.my_claims);
+        auto paths = _intersection(rivers, state.claims[state.player_id]);
         sites = _difference(_sites_on_all(paths), visited);
     }
     #endif
