@@ -265,8 +265,11 @@ class PunterServer:
             message = player.read()
             while True:
                 response = self._send_receive(message)
+                timeout = response.get('timeout', None)
+
                 message = player.write(response)
-                if message is None:
+
+                if timeout is None and message is None:
                     break
 
     def _open_map(self, mapid, port=None):
