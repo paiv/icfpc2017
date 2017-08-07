@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <queue>
@@ -16,6 +17,7 @@
 #define PLAYER_NAME "paiv"
 
 using namespace std;
+using appclock = chrono::high_resolution_clock;
 using namespace rapidjson;
 using json = rapidjson::Document;
 using jsonval = rapidjson::Value;
@@ -55,6 +57,8 @@ typedef int32_t s32;
 typedef int8_t s8;
 typedef uint32_t u32;
 typedef uint8_t u8;
+typedef float r32;
+typedef double r64;
 
 typedef vector<s32> ivec;
 typedef vector<u32> uvec;
@@ -87,7 +91,7 @@ _difference(const unordered_set<T>& a, const unordered_set<T>& b) {
     unordered_set<T> res;
 
     copy_if(begin(a), end(a), inserter(res, begin(res)),
-        [&b] (auto const& x) { return b.find(x) == end(b); }
+        [&b] (auto const& x) { return b.find(x) == b.end(); }
     );
 
     return res;
@@ -414,6 +418,15 @@ typedef struct game_map {
 } game_map;
 
 
+typedef struct game_board {
+    game_map map;
+    u32 players;
+    u8 ext_futures;
+    u8 ext_splurges;
+    u8 ext_options;
+} game_board;
+
+
 enum class extension : u8 {
     futures = 1,
     splurges = 2,
@@ -446,7 +459,7 @@ typedef struct api_state {
     u8 ext_splurges;
     u8 ext_options;
 
-    uvec options_available;
+    ivec options_available;
     uuset options_taken;
 
     uusetvec claims;
@@ -744,7 +757,7 @@ _parse_state(const jsonval& obj, const char* name) {
             state.ext_splurges = (ext & extension::splurges) == extension::splurges;
             state.ext_options = (ext & extension::options) == extension::options;
 
-            state.options_available = _json_parse_int_array<u32>(val, "opts");
+            state.options_available = _json_parse_int_array<s32>(val, "opts");
             state.options_taken = _json_parse_int_int_array_set<u32>(val, "options");
         }
     }
@@ -944,7 +957,7 @@ setup(const api& message) {
     state.ext_options = (message.settings & extension::options) == extension::options;
 
     if (state.ext_options) {
-        state.options_available = uvec(state.players, state.map.mines.size());
+        state.options_available = ivec(state.players, state.map.mines.size());
     }
 
     response.state = state;
@@ -983,43 +996,52 @@ _sites_on_all(const uuset& rivers) {
 
 
 void
+_update_claims(const move_t& mv, uusetvec& claims, uuset& all_claims,
+    ivec& options_available, uuset& options_taken) {
+
+    switch (mv.type) {
+
+        case move_type::claim: {
+                claims[mv.player_id].insert(mv.claim);
+                all_claims.insert(mv.claim);
+            }
+            break;
+
+        case move_type::option: {
+                options_taken.insert(mv.claim);
+                options_available[mv.player_id] = max(0, options_available[mv.player_id] - 1);
+
+                claims[mv.player_id].insert(mv.claim);
+                all_claims.insert(mv.claim);
+            }
+            break;
+
+        case move_type::splurge: {
+                auto end = mv.route.end();
+                auto p = mv.route.begin();
+                auto q = p + 1;
+                for (; p != end && q != end; p++, q++) {
+                    auto x = *p;
+                    auto y = *q;
+                    auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
+
+                    claims[mv.player_id].insert(claim);
+                    all_claims.insert(claim);
+                }
+            }
+            break;
+
+        case move_type::pass:
+            break;
+    }
+}
+
+
+void
 _update_claims(const api& message, api_state& state) {
     for (auto& m : message.moves) {
-        switch (m.type) {
-
-            case move_type::claim: {
-                    state.claims[m.player_id].insert(m.claim);
-                    state.all_claims.insert(m.claim);
-                }
-                break;
-
-            case move_type::option: {
-                    state.options_taken.insert(m.claim);
-                    state.options_available[m.player_id] = max(0, s32(state.options_available[m.player_id]) - 1);
-
-                    state.claims[m.player_id].insert(m.claim);
-                    state.all_claims.insert(m.claim);
-                }
-                break;
-
-            case move_type::splurge: {
-                    auto end = m.route.end();
-                    auto p = m.route.begin();
-                    auto q = p + 1;
-                    for (; p != end && q != end; p++, q++) {
-                        auto x = *p;
-                        auto y = *q;
-                        auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
-
-                        state.claims[m.player_id].insert(claim);
-                        state.all_claims.insert(claim);
-                    }
-                }
-                break;
-
-            case move_type::pass:
-                break;
-        }
+        _update_claims(m, state.claims, state.all_claims,
+            state.options_available, state.options_taken);
     }
 }
 
@@ -1137,7 +1159,7 @@ _update_score(api_state& state) {
 #if 0
 move_t
 random_player(api_state& state) {
-    move_t res = { move_type::pass };
+    move_t res = { move_type::pass, state.player_id };
 
     auto avail = _difference(state.map.rivers, state.all_claims);
 
@@ -1156,7 +1178,7 @@ random_player(api_state& state) {
 #if 0
 move_t
 random_mines_player(const api_state& state) {
-    move_t res = { move_type::pass };
+    move_t res = { move_type::pass, state.player_id };
 
     uset visited;
     uset sites(begin(state.map.mines), end(state.map.mines));
@@ -1183,22 +1205,24 @@ random_mines_player(const api_state& state) {
 #endif
 
 
-move_t
-_best_score_move(u32 player_id, const uuset& rivers, const api_state& state) {
-    move_t res = { move_type::pass };
+pair<move_t, s32>
+_best_score_move(s32 player_id, const uuset& rivers, const uusetvec& claims, const uuset& all_claims,
+    const ivec& score, const game_board& board) {
+
+    move_t best_move = { move_type::pass, player_id };
+    s32 best_score = 0;
 
     if (rivers.size() > 0) {
 
-        s32 best_score = 0;
         uuset avail;
 
         for (auto& r : rivers) {
 
-            auto claims = state.claims;
-            claims[player_id].insert(r);
+            auto xclaims = claims;
+            xclaims[player_id].insert(r);
 
-            auto score = _calc_score(state.map, state.players, claims);
-            auto new_score = score[player_id];
+            auto all_new_scores = _calc_score(board.map, board.players, xclaims);
+            auto new_score = all_new_scores[player_id];
 
             if (new_score == best_score) {
                 avail.insert(r);
@@ -1209,25 +1233,41 @@ _best_score_move(u32 player_id, const uuset& rivers, const api_state& state) {
             }
         }
 
-        if (best_score > state.score[player_id]) {
+        if (best_score > score[player_id]) {
             if (avail.size() > 0) {
                 auto sel = random_choice(begin(avail), end(avail));
 
-                res.type = move_type::claim;
-                res.claim = *sel;
+                best_move.type = move_type::claim;
+                best_move.claim = *sel;
 
-                if (state.ext_options && state.all_claims.find(res.claim) != end(state.all_claims)) {
-                    res.type = move_type::option;
+                if (board.ext_options && all_claims.find(best_move.claim) != end(all_claims)) {
+                    best_move.type = move_type::option;
                 }
             }
         }
     }
 
-    return res;
+    return make_pair(best_move, best_score);
 }
 
 
-#if 1
+pair<move_t, s32>
+_best_score_move(u32 player_id, const uuset& rivers, const api_state& state) {
+
+    game_board board = {
+        .map = state.map,
+        .players = state.players,
+        .ext_futures = state.ext_futures,
+        .ext_splurges = state.ext_splurges,
+        .ext_options = state.ext_options,
+    };
+
+    return _best_score_move(player_id, rivers, state.claims, state.all_claims,
+        state.score, board);
+}
+
+
+#if 0
 move_t
 best_mines_player(const api_state& state) {
 
@@ -1245,10 +1285,11 @@ best_mines_player(const api_state& state) {
         avail = _difference(rivers, state.all_claims);
     }
 
-    move_t res = { move_type::pass };
+    move_t res = { move_type::pass, player_id };
 
     if (avail.size() > 0) {
-        res = _best_score_move(player_id, avail, state);
+        auto p = _best_score_move(player_id, avail, state);
+        res = get<0>(p);
     }
 
     return res;
@@ -1256,9 +1297,135 @@ best_mines_player(const api_state& state) {
 #endif
 
 
-#if 0
+#if 1
+
+typedef struct search_state {
+    s32 me;
+    s32 active_player;
+    ivec options_available;
+    uuset options_taken;
+    uusetvec claims;
+    uuset all_claims;
+    ivec score;
+} search_state;
+
+
+pair<move_t, s32>
+_best_move(const search_state& state, const game_board& board) {
+    const auto player_id = state.active_player;
+
+    uset mines(begin(board.map.mines), end(board.map.mines));
+    auto sites = _union(mines, _sites_on_all(state.claims[player_id]));
+    auto rivers = _rivers_from_all(board.map.rivers, sites);
+
+    uuset avail;
+    auto can_options = state.options_available[player_id] > 0;
+
+    if (board.ext_options && can_options) {
+        avail = _difference(rivers, state.options_taken);
+    }
+    else {
+        avail = _difference(rivers, state.all_claims);
+    }
+
+    if (avail.size() > 0) {
+        return _best_score_move(player_id, avail, state.claims, state.all_claims,
+            state.score, board);
+    }
+
+    move_t res = { move_type::pass, player_id };
+    return make_pair(res, 0);
+}
+
+
 void
-minimax_player(const api_state& state, api& response) {
+_update_state(search_state& state, const move_t& mv) {
+
+    _update_claims(mv, state.claims, state.all_claims,
+        state.options_available, state.options_taken);
+}
+
+
+pair<move_t, s32>
+_best_playout(const search_state& input_state, const game_board& board, u32 max_level, r64 timelimit) {
+
+    auto started = appclock::now();
+
+    move_t best_move = { move_type::pass, input_state.active_player };
+    s32 best_score = 0;
+
+    s32 level = 0;
+    search_state playout_state = input_state;
+    u32 iterations = 0;
+
+    while (true) {
+        iterations++;
+        auto now = appclock::now();
+        chrono::duration<r64, milli> elapsed = now - started;
+        if (elapsed.count() >= timelimit) {
+            break;
+        }
+
+        auto player_id = playout_state.active_player;
+
+        auto res = _best_move(playout_state, board);
+        auto mv = get<0>(res);
+        auto score = get<1>(res);
+
+        if (level == 0) {
+            if (player_id == input_state.me && // ~~
+                score > best_score) {
+
+                best_score = score;
+                best_move = mv;
+            }
+        }
+
+        if (level < max_level) {
+            level++;
+            _update_state(playout_state, mv);
+            playout_state.active_player = (playout_state.active_player + 1) % board.players;
+        }
+        else {
+            level = 0;
+            playout_state = input_state;
+        }
+    }
+
+    // fprintf(stderr, "best score %d (%u)\n", best_score, iterations);
+
+    return make_pair(best_move, best_score);
+}
+
+
+move_t
+minimax_player(const api_state& state) {
+
+    game_board board = {
+        .map = state.map,
+        .players = state.players,
+        .ext_futures = state.ext_futures,
+        .ext_splurges = state.ext_splurges,
+        .ext_options = state.ext_options,
+    };
+
+    search_state xstate = {
+        .me = state.player_id,
+        .active_player = state.player_id,
+        .options_available = state.options_available,
+        .options_taken = state.options_taken,
+        .claims = state.claims,
+        .all_claims = state.all_claims,
+        .score = state.score,
+    };
+
+    u32 max_level = 4;
+    r64 timelimit = 800;
+
+    auto res = _best_playout(xstate, board, max_level, timelimit);
+    auto mv = get<0>(res);
+
+    return mv;
 }
 #endif
 
@@ -1273,11 +1440,11 @@ gameplay(const api& message) {
     _update_claims(message, state);
     _update_score(state);
 
-
     // auto res = random_player(state);
     // auto res = random_mines_player(state);
-    auto res = best_mines_player(state);
-    // auto res = minimax_player(state);
+    // auto res = best_mines_player(state);
+    auto res = minimax_player(state);
+
 
     response.state = state;
 

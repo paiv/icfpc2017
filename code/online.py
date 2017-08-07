@@ -136,13 +136,14 @@ class Player:
 
 class OfflinePlayer(Player):
 
-    def __init__(self, cmd, name=None):
+    def __init__(self, cmd, name=None, logfile=None):
         self.cmd = cmd
         self.name = name or 'offline-player'
         self.state = None
         self.proc = None
         self.transport = None
-        self.clientlog = io.open('client.log', 'a', 1)
+        logfile = logfile or 'client.log'
+        self.clientlog = io.open(logfile, 'a', 1)
 
     def __enter__(self):
         pass
@@ -307,9 +308,8 @@ class PunterServer:
         return self.transport.receive()
 
 
-def play(mapid, port=None, cmd=None):
-    cmd = cmd or 'build/release/punter'
-    player = OfflinePlayer(cmd)
+def play(mapid, port, cmd, logfile):
+    player = OfflinePlayer(cmd, logfile=logfile)
     player = OnlinePlayer(player)
 
     server = PunterServer(port=port)
@@ -318,15 +318,24 @@ def play(mapid, port=None, cmd=None):
 
 
 if __name__ == '__main__':
+    import argparse
     import sys
 
     port = None
     cmd = None
 
-    if len(sys.argv) > 1:
-        port = int(sys.argv[1])
+    parser = argparse.ArgumentParser(description='Online to offline runner (lamduct)')
 
-    if len(sys.argv) > 2:
-        cmd = sys.argv[2]
+    parser.add_argument('--port', metavar='P', type=int,
+                    help='server port')
 
-    play(PunterServer.MAP1_SAMPLE, port=port, cmd=cmd)
+    parser.add_argument('--cmd', metavar='C', type=str, default='./punter',
+                    help='offline client command line')
+
+    parser.add_argument('--log', metavar='L', type=str, default='client.log',
+                    help='client log file')
+
+    args = parser.parse_args()
+    print(args)
+
+    play(PunterServer.MAP1_SAMPLE, port=args.port, cmd=args.cmd, logfile=args.log)
