@@ -1054,7 +1054,7 @@ _best_move(const uuset& rivers, const api_state& state) {
     if (rivers.size() > 0) {
 
         s32 best_score = 0;
-        move_t best_move = res;
+        uuset avail;
 
         for (auto& r : rivers) {
 
@@ -1062,16 +1062,24 @@ _best_move(const uuset& rivers, const api_state& state) {
             claims[state.player_id].insert(r);
 
             auto score = _calc_score(state.map, state.players, claims);
+            auto new_score = score[state.player_id];
 
-            if (score[state.player_id] > best_score) {
-                best_score = score[state.player_id];
-                best_move.type = move_type::claim;
-                best_move.claim = r;
+            if (new_score == best_score) {
+                avail.insert(r);
+            }
+            else if (new_score > best_score) {
+                best_score = new_score;
+                avail = { r };
             }
         }
 
         if (best_score > state.score[state.player_id]) {
-            res = best_move;
+            if (avail.size() > 0) {
+                auto sel = random_choice(begin(avail), end(avail));
+
+                res.type = move_type::claim;
+                res.claim = *sel;
+            }
         }
     }
 
