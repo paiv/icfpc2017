@@ -34,6 +34,18 @@ struct hash<pair<uint32_t, uint32_t>> {
     }
 };
 
+template<class T>
+inline T
+operator& (T a, T b) {
+    return static_cast<T>(static_cast<int32_t>(a) & static_cast<int32_t>(b));
+}
+
+template<class T>
+inline T
+operator| (T a, T b) {
+    return static_cast<T>(static_cast<int32_t>(a) | static_cast<int32_t>(b));
+}
+
 }
 
 
@@ -55,6 +67,7 @@ typedef vector<uuset> uusetvec;
 #if VERBOSE
 void log(const char* text) { fprintf(stderr, "%s\n", text); }
 void log(const string& text) { log(text.c_str()); }
+void log(uint32_t x) { fprintf(stderr, "%u\n", x); }
 
 void log(const json& message) {
     StringBuffer so;
@@ -186,6 +199,22 @@ _json_parse_int(const jsonval& obj, const char* name, const char* inner, T defau
 }
 
 
+template<typename T = u8>
+T
+_json_parse_bool(const jsonval& obj, const char* name, T default_value = 0) {
+    if (obj.HasMember(name)) {
+        auto& val = obj[name];
+        if (val.IsBool()) {
+            return T(val.GetBool());
+        }
+        if (val.IsNumber()) {
+            return T(val.GetInt() != 0);
+        }
+    }
+    return default_value;
+}
+
+
 template<typename T>
 vector<T>
 _json_parse_int_array(const jsonval& obj) {
@@ -288,9 +317,9 @@ _json_parse_int_int_array_set(const jsonval& obj, const char* name) {
 }
 
 
-template<typename Alloc>
+template<typename T, typename Alloc>
 void
-_json_add_int(jsonval& obj, const char* name, s32 value, Alloc& allocator) {
+_json_add_int(jsonval& obj, const char* name, T value, Alloc& allocator) {
     jsonval val(value);
     obj.AddMember(StringRef(name), val, allocator);
 }
@@ -368,8 +397,8 @@ enum class api_message_type : s32 {
     ready,
     pass,
     claim,
-        // TODO: splurge,
-        // TODO: option,
+    splurge,
+    option,
     // server –> player
     you,
     setup,
@@ -385,11 +414,18 @@ typedef struct game_map {
 } game_map;
 
 
+enum class extension : u8 {
+    futures = 1,
+    splurges = 2,
+    options = 4,
+};
+
+
 enum class move_type : u8 {
     pass,
     claim,
     splurge,
-    // TODO: option,
+    option,
 };
 
 
@@ -403,8 +439,16 @@ typedef struct move_t {
 
 typedef struct api_state {
     s32 player_id;
+
     u32 players;
     game_map map;
+    u8 ext_futures;
+    u8 ext_splurges;
+    u8 ext_options;
+
+    u32 options_available;
+    uuset options_taken;
+
     uusetvec claims;
     uuset all_claims;
     ivec score;
@@ -422,7 +466,7 @@ typedef struct api {
     // setup
     game_map board;
     u32 players;
-        // settings: futures, splurges
+    extension settings;
     // move
     vector<move_t> moves;
     // claim
@@ -513,6 +557,26 @@ _parse_game_map_state(const jsonval& obj, const char* name) {
 }
 
 
+extension
+_parse_settings(const jsonval& obj, const char* name) {
+    extension none = extension(0);
+
+    if (obj.HasMember(name)) {
+        auto& val = obj[name];
+        if (val.IsObject()) {
+
+            extension fut = _json_parse_bool(val, "futures") ? extension::futures : none;
+            extension spl = _json_parse_bool(val, "splurges") ? extension::splurges : none;
+            extension opt = _json_parse_bool(val, "options") ? extension::options : none;
+
+            return (fut | spl | opt);
+        }
+    }
+
+    return none;
+}
+
+
 template<typename Alloc>
 void
 _code_game_map_state(jsonval& obj, const char* name, const game_map& board, Alloc& allocator) {
@@ -548,6 +612,13 @@ _parse_moves(const jsonval& obj) {
                 m.type = move_type::splurge;
                 m.player_id = _json_parse_int(v, "splurge", "punter");
                 m.route = _json_parse_int_array<u32>(v, "splurge", "route");
+            }
+            else if (v.HasMember("option")) {
+                m.type = move_type::option;
+                m.player_id = _json_parse_int(v, "option", "punter");
+                u32 x = _json_parse_int(v, "option", "source");
+                u32 y = _json_parse_int(v, "option", "target");
+                m.claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
             }
 
             moves.push_back(m);
@@ -667,6 +738,14 @@ _parse_state(const jsonval& obj, const char* name) {
             state.claims = _parse_claims(val, "claims", state.players);
             state.all_claims = _join_claims(state.claims);
             state.score = _json_parse_int_array<s32>(val, "score");
+
+            extension ext = (extension) _json_parse_int(val, "ext", 0);
+            state.ext_futures = (ext & extension::futures) == extension::futures;
+            state.ext_splurges = (ext & extension::splurges) == extension::splurges;
+            state.ext_options = (ext & extension::options) == extension::options;
+
+            state.options_available = _json_parse_int(val, "opts", 0);
+            state.options_taken = _json_parse_int_int_array_set<u32>(val, "options");
         }
     }
     return state;
@@ -683,6 +762,19 @@ _code_state(jsonval& obj, const char* name, const api_state& state, Alloc& alloc
     _code_game_map_state(packet, "map", state.map, allocator);
     _code_claims(packet, "claims", state.claims, allocator);
     _json_add_int_array(packet, "score", state.score, allocator);
+
+    const extension none = extension(0);
+    extension ext =
+        (state.ext_futures ? extension::futures : none) |
+        (state.ext_splurges ? extension::splurges : none) |
+        (state.ext_options ? extension::options : none);
+
+    _json_add_int(packet, "ext", u32(ext), allocator);
+
+    if (state.ext_options) {
+        _json_add_int(packet, "opts", state.options_available, allocator);
+        _json_add_int_int_array(packet, "options", state.options_taken, allocator);
+    }
 
     obj.AddMember(StringRef(name), packet, allocator);
 }
@@ -701,6 +793,7 @@ _parse_message(const json& packet) {
         message.player_id = _json_parse_int(packet, "punter", -1);
         message.players = _json_parse_int(packet, "punters", 1);
         message.board = _parse_game_map(packet, "map");
+        message.settings = _parse_settings(packet, "settings");
         message.state = _parse_state(packet, "state");
     }
     else if (packet.HasMember("move")) {
@@ -740,6 +833,15 @@ _code_message(const api& message) {
         case api_message_type::claim:
             _code_claim(packet, "claim", message.player_id, message.claim, allocator);
             _code_state(packet, "state", message.state, allocator);
+            break;
+
+        case api_message_type::option:
+            _code_claim(packet, "option", message.player_id, message.claim, allocator);
+            _code_state(packet, "state", message.state, allocator);
+            break;
+
+        case api_message_type::splurge:
+            // TODO: splurge
             break;
 
         case api_message_type::none:
@@ -837,6 +939,14 @@ setup(const api& message) {
     state.claims = uusetvec(state.players);
     state.score = ivec(state.players);
 
+    state.ext_futures = (message.settings & extension::futures) == extension::futures;
+    state.ext_splurges = (message.settings & extension::splurges) == extension::splurges;
+    state.ext_options = (message.settings & extension::options) == extension::options;
+
+    if (state.ext_options) {
+        state.options_available = state.map.mines.size();
+    }
+
     response.state = state;
 
     return response;
@@ -875,22 +985,41 @@ _sites_on_all(const uuset& rivers) {
 void
 _update_claims(const api& message, api_state& state) {
     for (auto& m : message.moves) {
-        if (m.type == move_type::claim) {
-            state.claims[m.player_id].insert(m.claim);
-            state.all_claims.insert(m.claim);
-        }
-        else if (m.type == move_type::splurge) {
-            auto end = m.route.end();
-            auto p = m.route.begin();
-            auto q = p + 1;
-            for (; p != end && q != end; p++, q++) {
-                auto x = *p;
-                auto y = *q;
-                auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
+        switch (m.type) {
 
-                state.claims[m.player_id].insert(claim);
-                state.all_claims.insert(claim);
-            }
+            case move_type::claim: {
+                    state.claims[m.player_id].insert(m.claim);
+                    state.all_claims.insert(m.claim);
+                }
+                break;
+
+            case move_type::option: {
+                    state.options_taken.insert(m.claim);
+                    if (m.player_id == state.player_id) {
+                        state.options_available = max(0, s32(state.options_available) - 1);
+                    }
+                    state.claims[m.player_id].insert(m.claim);
+                    state.all_claims.insert(m.claim);
+                }
+                break;
+
+            case move_type::splurge: {
+                    auto end = m.route.end();
+                    auto p = m.route.begin();
+                    auto q = p + 1;
+                    for (; p != end && q != end; p++, q++) {
+                        auto x = *p;
+                        auto y = *q;
+                        auto claim = (x < y) ? make_pair(x, y) : make_pair(y, x);
+
+                        state.claims[m.player_id].insert(claim);
+                        state.all_claims.insert(claim);
+                    }
+                }
+                break;
+
+            case move_type::pass:
+                break;
         }
     }
 }
@@ -1079,6 +1208,10 @@ _best_move(const uuset& rivers, const api_state& state) {
 
                 res.type = move_type::claim;
                 res.claim = *sel;
+
+                if (state.ext_options && state.all_claims.find(res.claim) != end(state.all_claims)) {
+                    res.type = move_type::option;
+                }
             }
         }
     }
@@ -1094,7 +1227,14 @@ best_mines_player(const api_state& state, api& response) {
     uset mines(begin(state.map.mines), end(state.map.mines));
     auto sites = _union(mines, _sites_on_all(state.claims[state.player_id]));
     auto rivers = _rivers_from_all(state.map.rivers, sites);
-    auto avail = _difference(rivers, state.all_claims);
+
+    uuset avail;
+    if (state.ext_options && state.options_available > 0) {
+        avail = _difference(rivers, state.options_taken);
+    }
+    else {
+        avail = _difference(rivers, state.all_claims);
+    }
 
     move_t res = { move_type::pass };
 
@@ -1113,7 +1253,12 @@ best_mines_player(const api_state& state, api& response) {
             response.claim = res.claim;
             break;
 
-        default:
+        case move_type::option:
+            response.type = api_message_type::option;
+            response.claim = res.claim;
+            break;
+
+        case move_type::splurge:
             break;
     }
 }
