@@ -319,7 +319,6 @@ def play(mapid, port, cmd, logfile):
 
 if __name__ == '__main__':
     import argparse
-    import sys
 
     port = None
     cmd = None
@@ -336,6 +335,5 @@ if __name__ == '__main__':
                     help='client log file')
 
     args = parser.parse_args()
-    print(args)
 
     play(PunterServer.MAP1_SAMPLE, port=args.port, cmd=args.cmd, logfile=args.log)

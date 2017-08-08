@@ -5,6 +5,8 @@ http://2017.icfpcontest.org/
 https://icfpcontest2017.github.io/
 
 
+<img src="circle.gif" width="200" alt="punting gameplay">
+
 
 Implementation
 --------------

@@ -13,7 +13,7 @@
 #include "rapidjson/writer.h"
 
 
-#define VERBOSE 0
+#define VERBOSE 1
 #define PLAYER_NAME "paiv"
 
 using namespace std;
