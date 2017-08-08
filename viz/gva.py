@@ -66,6 +66,7 @@ class GameBoard:
     def setup(self, player_id, players, mapobj):
         self.player_id = player_id
         self.players = players
+        self.claims = set()
 
         mines = mapobj['mines']
         sites = mapobj['sites']
@@ -98,34 +99,45 @@ class GameBoard:
             self.graph.node(id, pos=pos, **attrs)
 
         for river in rivers:
-            x, y = river['source'], river['target']
-            if x > y:
-                x, y = y, x
+            x, y = self._enorm(river['source'], river['target'])
             self.graph.edge(x, y)
 
-    def claim(self, player_id, river):
-        x, y = river
+    def _enorm(self, x, y=None):
+        if y is None:
+            x, y = x
         if x > y:
             x, y = y, x
+        return x, y
+
+    def claim(self, player_id, river):
+        river = self._enorm(river)
+        self.claims.add(river)
 
         attrs = self.claimed_edge_attrs.copy()
         attrs['color'] = self._player_color(player_id)
 
-        self.graph.update_edge(x, y, **attrs)
+        self.graph.update_edge(river, **attrs)
 
     def option(self, player_id, river):
-        x, y = river
-        if x > y:
-            x, y = y, x
+        river = self._enorm(river)
 
         attrs = self.claimed_edge_attrs.copy()
         option_color = self._player_color(player_id)
-        claim_color = self.graph.get_edge_attrs(x, y)['color']
+        claim_color = self.graph.get_edge_attrs(river)['color']
 
         attrs['dir'] = 'both'
         attrs['color'] = '{}:{}'.format(claim_color, option_color)
 
-        self.graph.update_edge(x, y, **attrs)
+        self.graph.update_edge(river, **attrs)
+
+    def splurge(self, player_id, route):
+        for river in zip(route, route[1:]):
+            river = self._enorm(river)
+
+            if river in self.claims:
+                self.option(player_id, river)
+            else:
+                self.claim(player_id, river)
 
     def _player_color(self, player):
         return (self.my_color if player == self.player_id
@@ -230,10 +242,10 @@ class LogAnimator:
 
             if claim is not None:
                 board.claim(claim['punter'], (claim['source'], claim['target']))
-            if option is not None:
+            elif option is not None:
                 board.option(option['punter'], (option['source'], option['target']))
             elif splurge is not None:
-                raise Exception('TODO: splurge')
+                board.splurge(splurge['punter'], splurge['route'])
 
             self._export_frame(board, target)
 

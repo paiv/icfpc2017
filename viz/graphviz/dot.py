@@ -59,6 +59,11 @@ class Graph:
         edge = self.Edge(self.directed, node_from, node_to, **kwargs)
         self.edges[(edge.node_from, edge.node_to)] = edge
 
+    def has_edge(self, node_from, node_to=None):
+        if node_to is not None:
+            node_from = (node_from, node_to)
+        return self.edges.get(node_from, None) is not None
+
     def update_edge(self, node_from, node_to=None, **kwargs):
         if node_to is not None:
             node_from = (node_from, node_to)
