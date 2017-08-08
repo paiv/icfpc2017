@@ -48,10 +48,12 @@ class GameBoard:
 
         self.player_colors = [
             'dodgerblue3',
-            # 'deeppink1',
+            'coral4',
             'forestgreen',
             'gray16',
             'darkorchid2',
+            'goldenrod1',
+            'yellow3',
             'brown1',
             'limegreen',
             'purple1',

@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tempfile
 
 from glob import glob
 
@@ -39,14 +40,18 @@ class ImageMagick:
         kwargs.update(self.kwargs)
 
         files = glob(os.path.join(frames_dir, '*'))
-        files = ' '.join('"%s"' % s for s in files)
+        files = '\n'.join('"%s"' % s for s in files)
         files = bytes(files, 'utf-8')
 
-        proc = ProcRunner(arg_prefix='-')
+        with tempfile.NamedTemporaryFile() as temp:
+            temp.write(files)
+            temp.flush()
 
-        proc.run('convert',
-            '@-',       # take file list from stdin
-            'gif:-',    # produce output to stdout
-            input=files,
-            stdout=fd,
-            **kwargs)
+            proc = ProcRunner(arg_prefix='-')
+
+            proc.run('convert',
+                '@{}'.format(temp.name),
+                'gif:-',    # produce output to stdout
+                input=files,
+                stdout=fd,
+                **kwargs)
