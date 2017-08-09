@@ -5,7 +5,7 @@ http://2017.icfpcontest.org/
 https://icfpcontest2017.github.io/
 
 
-[<img src="circle.gif" alt="punting gameplay" style="width:200px">](boston.gif)
+[<img src="circle.gif" alt="punting gameplay" width=200>](boston.gif)
 
 
 Implementation
