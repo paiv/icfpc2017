@@ -13,8 +13,7 @@ from operator import itemgetter
 
 class GameBoard:
     def __init__(self):
-        # handle claim and option on single edge
-        self.graph = dot.Graph(directed=True)
+        self.graph = dot.Graph(directed=False)
 
         self.graph.node_attr['label'] = ''
         self.graph.node_attr['shape'] = 'point'
@@ -41,7 +40,7 @@ class GameBoard:
         }
 
         self.claimed_edge_attrs = {
-            'style': 'solid',
+            'style': 'bold',
         }
 
         self.my_color = 'red'
@@ -74,7 +73,7 @@ class GameBoard:
         sites = mapobj['sites']
         rivers = mapobj['rivers']
 
-        sites = [(site['id'], site['x'], site['y']) for site in sites]
+        sites = [(site['id'], site['x'], -site['y']) for site in sites]
 
         minx = min(x for _,x,y in sites)
         maxx = max(x for _,x,y in sites)
