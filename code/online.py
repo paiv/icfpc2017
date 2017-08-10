@@ -138,7 +138,7 @@ class OfflinePlayer(Player):
 
     def __init__(self, cmd, name=None, logfile=None):
         self.cmd = cmd
-        self.name = name or 'offline-player'
+        self._name = name or 'offline-player'
         self.state = None
         self.proc = None
         self.transport = None
@@ -156,6 +156,11 @@ class OfflinePlayer(Player):
             self.proc.kill()
             self.proc = None
 
+    @property
+    def name(self):
+        self._open_process()
+        return self._name
+
     def _open_process(self):
         if self.proc is None:
 
@@ -171,9 +176,9 @@ class OfflinePlayer(Player):
         handshake = self.transport.receive()
 
         if 'me' in handshake:
-            name = handshake.get('me', None)
+            self._name = handshake.get('me', None)
 
-            response = {'you': name}
+            response = {'you': self._name}
             self.transport.send(response)
         else:
             raise PunterError()
@@ -203,8 +208,9 @@ class OnlinePlayer(Player):
     STATE_GAMEPLAY = 2
     STATE_SCORING = 3
 
-    def __init__(self, offline_player):
+    def __init__(self, offline_player, name=None):
         self.player = offline_player
+        self.name = name
         self.state = self.STATE_HANDSHAKE
         self.handshake_complete = False
 
@@ -239,18 +245,18 @@ class OnlinePlayer(Player):
             self.handshake_complete = True
 
     def _api_me(self):
-        return {'me': self.player.name}
+        return {'me': self.name or self.player.name}
 
 
 class PunterServer:
-    HOST = 'punter.inf.ed.ac.uk'
     PORT_BASE = 9000
     MAP1_SAMPLE = 0
 
-    def __init__(self, port=None):
+    def __init__(self, host, port=None):
         self.transport = None
+        self.host = host
         self.port = port
-        self.host_ip = socket.gethostbyname(self.HOST)
+        self.host_ip = socket.gethostbyname(self.host)
 
     def __enter__(self):
         pass
@@ -259,8 +265,8 @@ class PunterServer:
         if self.transport is not None:
             self.transport.close()
 
-    def play(self, mapid, player):
-        self._open_map(mapid, port=self.port)
+    def play(self, player):
+        self._open_map(port=self.port)
 
         while player.ready() and self.transport is not None:
             message = player.read()
@@ -273,12 +279,12 @@ class PunterServer:
                 if timeout is None and message is None:
                     break
 
-    def _open_map(self, mapid, port=None):
+    def _open_map(self, port=None):
         if port is not None:
             self.transport = self._connect(port)
         else:
             for n in range(10,0,-1):
-                port = self.PORT_BASE + mapid + n
+                port = self.PORT_BASE + n
                 self.transport = self._connect(port)
                 if self.transport is not None:
                     break
@@ -286,10 +292,10 @@ class PunterServer:
         if self.transport is not None:
             print(': connected')
         else:
-            raise PunterServerError()
+            raise PunterServerError('could not connect')
 
     def _connect(self, port):
-        print(': trying', self.host_ip, port)
+        print(': trying', self.host, port)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(2)
         try:
@@ -308,32 +314,44 @@ class PunterServer:
         return self.transport.receive()
 
 
-def play(mapid, port, cmd, logfile):
+def play(name, host, port, cmd, logfile):
     player = OfflinePlayer(cmd, logfile=logfile)
-    player = OnlinePlayer(player)
+    player = OnlinePlayer(player, name=name)
 
-    server = PunterServer(port=port)
+    server = PunterServer(host=host, port=port)
     with server:
-        server.play(mapid, player)
+        server.play(player)
 
 
 if __name__ == '__main__':
     import argparse
+    import os
 
-    port = None
-    cmd = None
+    # default_host = 'punter.inf.ed.ac.uk'
+    default_host = '127.0.0.1'
+
+    default_cmd = os.path.join(os.path.dirname(__file__), 'punter')
+
 
     parser = argparse.ArgumentParser(description='Online to offline runner (lamduct)')
 
-    parser.add_argument('--port', metavar='P', type=int,
-                    help='server port')
+    parser.add_argument('-a', '--host', type=str,
+        default=default_host,
+        help='server host, %s' % default_host)
 
-    parser.add_argument('--cmd', metavar='C', type=str, default='./punter',
-                    help='offline client command line')
+    parser.add_argument('-p', '--port', type=int,
+        help='server port')
 
-    parser.add_argument('--log', metavar='L', type=str, default='client.log',
-                    help='client log file')
+    parser.add_argument('-n', '--name', type=str, default='online-player',
+        help='player name')
+
+    parser.add_argument('--cmd', type=str, default=default_cmd,
+        help='offline client command line')
+
+    parser.add_argument('--log', type=str, default='client.log',
+        help='client log file')
 
     args = parser.parse_args()
 
-    play(PunterServer.MAP1_SAMPLE, port=args.port, cmd=args.cmd, logfile=args.log)
+
+    play(name=args.name, host=args.host, port=args.port, cmd=args.cmd, logfile=args.log)
