@@ -1,11 +1,14 @@
 paiv - icfpc 2017
 =================
 
-http://2017.icfpcontest.org/
-https://icfpcontest2017.github.io/
+* http://2017.icfpcontest.org/
+* https://icfpcontest2017.github.io/
 
 
 [<img src="circle.gif" alt="punting gameplay" width=200>](boston.gif)
+
+
+Read here: https://paiv.github.io/blog/2017/08/09/icfp-contest-punting.html
 
 
 Implementation
