@@ -63,8 +63,18 @@ https://github.com/prozacchiwawa/icfp2017
 The Flux Ambassadors
 https://github.com/purcell/icfpc2017
 
+Team THIRTEEN
+https://docs.google.com/document/d/1-jdWn4CsmWzprbBA249v4F_P95F3UL9XDyYYYjcsZ_w/edit?usp=sharing
+
+A Storm of Minds
+https://github.com/jandreske/icfpc2017
+
 DNIWE
 https://github.com/icfpc-dniwe/icfpc2017
+
+Ranjit Mathew
+http://rmathew.com/2017/icfpc17.html
+https://github.com/rmathew/icfpc/
 
 droundy
 https://github.com/droundy/icfp-2017-contest
