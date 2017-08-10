@@ -22,4 +22,4 @@ const srv = new server.Server(match, args.players)
 srv.start(args.host, args.port)
 
 
-logger.log(`listening on ${args.host}:${args.port}`)
+// logger.log(`listening on ${args.host}:${args.port}`)

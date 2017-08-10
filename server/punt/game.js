@@ -507,11 +507,12 @@ class Match extends EventEmitter {
         this.state = MatchState.scoring
 
         const scores = this._scores()
-        logger.log('scores:', scores)
 
         let template = {
             scores: scores,
         }
+
+        logger.log(JSON.stringify(template))
 
         for (let i = 0; i < this.maxPlayers; i++) {
             let message = {stop: Object.assign({}, template)}

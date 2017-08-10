@@ -8,7 +8,7 @@ const defaultMap = path.join('maps', 'sample.json')
 
 
 const parser = new argparse.ArgumentParser({
-    description: 'Punter Server',
+    description: 'Punter Server (paiv)',
 })
 
 parser.addArgument(['-b', '--host', '--bind-address'], {
