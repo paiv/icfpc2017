@@ -21,7 +21,7 @@ usage: puntd.js [-h] [-b HOST] [-p PORT] [-m MAP] [-n PLAYERS] [-f] [-o] [-s]
                 [-th HANDSHAKE] [-ts SETUP] [-tm MOVE]
 
 
-Punter Server
+Punter Server (paiv)
 
 Optional arguments:
   -h, --help            Show this help message and exit.

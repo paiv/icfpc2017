@@ -13,6 +13,7 @@ Implementation
 
 * Python (lightning submission, online-offline runner)
 * C/C++ (final submission)
+* JS (server, post-event)
 
 
 Results
