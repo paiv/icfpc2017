@@ -14,14 +14,17 @@ CLIENT2="${2:-$MYDIR/../code/online.py}"
 
 
 PLAYERS=2 ./server-ext-all.sh &
+SERVER_PID=$(jobs -p)
 
 LOOP=0
 until nc -z "$HOST" "$PORT"
 do
     if [ $((LOOP++)) -ge 20 ]; then exit 1; fi
     sleep 0.2
-done
+done 2> /dev/null
 
 
-"$CLIENT1" --name player1 --host "$HOST" --port "$PORT" --log client1.log &
-"$CLIENT2" --name player2 --host "$HOST" --port "$PORT" --log client2.log
+"$CLIENT1" -s --name player1 --host "$HOST" --port "$PORT" --log client1.log &
+"$CLIENT2" -s --name player2 --host "$HOST" --port "$PORT" --log client2.log
+
+wait $SERVER_PID

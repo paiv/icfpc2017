@@ -208,9 +208,10 @@ class OnlinePlayer(Player):
     STATE_GAMEPLAY = 2
     STATE_SCORING = 3
 
-    def __init__(self, offline_player, name=None):
+    def __init__(self, offline_player, name=None, silent=False):
         self.player = offline_player
         self.name = name
+        self.silent = silent
         self.state = self.STATE_HANDSHAKE
         self.handshake_complete = False
 
@@ -232,7 +233,8 @@ class OnlinePlayer(Player):
         if self.state == self.STATE_HANDSHAKE:
             return self._handshake(response)
         elif timeout is not None:
-            print('** timeout is ', timeout)
+            if not self.silent:
+                print('** timeout is ', timeout)
         else:
             if response.get('stop', None) is not None:
                 self.state = self.STATE_SCORING
@@ -252,11 +254,12 @@ class PunterServer:
     PORT_BASE = 9000
     MAP1_SAMPLE = 0
 
-    def __init__(self, host, port=None):
+    def __init__(self, host, port=None, silent=False):
         self.transport = None
         self.host = host
         self.port = port
         self.host_ip = socket.gethostbyname(self.host)
+        self.silent = silent
 
     def __enter__(self):
         pass
@@ -290,12 +293,15 @@ class PunterServer:
                     break
 
         if self.transport is not None:
-            print(': connected')
+            if not self.silent:
+                print(': connected')
         else:
             raise PunterServerError('could not connect')
 
     def _connect(self, port):
-        print(': trying', self.host, port)
+        if not self.silent:
+            print(': trying', self.host, port)
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(2)
         try:
@@ -314,11 +320,11 @@ class PunterServer:
         return self.transport.receive()
 
 
-def play(name, host, port, cmd, logfile):
+def play(name, host, port, cmd, logfile, silent=False):
     player = OfflinePlayer(cmd, logfile=logfile)
-    player = OnlinePlayer(player, name=name)
+    player = OnlinePlayer(player, name=name, silent=silent)
 
-    server = PunterServer(host=host, port=port)
+    server = PunterServer(host=host, port=port, silent=silent)
     with server:
         server.play(player)
 
@@ -351,7 +357,16 @@ if __name__ == '__main__':
     parser.add_argument('--log', type=str, default='client.log',
         help='client log file')
 
+    parser.add_argument('-s', '--silent', action='store_true',
+        help='be quiet')
+
     args = parser.parse_args()
 
 
-    play(name=args.name, host=args.host, port=args.port, cmd=args.cmd, logfile=args.log)
+    play(
+        name=args.name,
+        host=args.host,
+        port=args.port,
+        cmd=args.cmd,
+        logfile=args.log,
+        silent=args.silent)
