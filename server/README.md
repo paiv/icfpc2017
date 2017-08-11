@@ -3,14 +3,16 @@ Punting Server
 ==============
 
 
-# Install
+Install
+-------
 
 ```sh
 npm install
 ./puntd -h
 ```
 
-# Usage
+Usage
+-----
 
 ```
 usage: puntd.js [-h] [-b HOST] [-p PORT] [-m MAP] [-n PLAYERS] [-f] [-o] [-s]
@@ -41,16 +43,16 @@ Optional arguments:
 ```
 
 
-Docker image
-------------
+# Docker image
 
-# Run
+Run
+---
 
 ```sh
 docker run --rm paiv/puntd /app/puntd.js -h
 ```
 
-##### Bind to local port 9123
+#### Bind to local port 9123
 
 Inside docker container, the service binds to port 9000. You need to translate
 from local port 9123 to container port 9000:
@@ -59,7 +61,7 @@ from local port 9123 to container port 9000:
 docker run --rm -p 9123:9000 paiv/puntd
 ```
 
-##### Change map
+#### Change map
 
 To run a map bundled inside container:
 
@@ -68,7 +70,7 @@ docker run --rm -p 9123:9000 paiv/puntd \
     /app/puntd.js --map maps/circle.json
 ```
 
-##### Local maps
+#### Local maps
 
 To run your maps, you can mount them into container:
 
@@ -80,7 +82,8 @@ docker run --rm -p 9123:9000 \
 ```
 
 
-# Build
+Build
+-----
 
 To build docker image from source:
 
