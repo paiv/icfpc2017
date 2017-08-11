@@ -44,8 +44,6 @@ class Player extends EventEmitter {
     }
 
     receive(message) {
-        // logger.log(JSON.stringify(message))
-
         if (this.state == PlayerState.handshake) {
             this._handshake(message)
         }
@@ -58,7 +56,6 @@ class Player extends EventEmitter {
     }
 
     send(message) {
-        // logger.log(JSON.stringify(message))
         if (!this.zombie) {
             this.emit('message', message)
         }
@@ -241,6 +238,8 @@ class Match extends EventEmitter {
             }
         }
 
+        logger.log(JSON.stringify(template))
+
         this.players.forEach((player, index) => {
             let message = Object.assign({}, template)
             message.punter = index
@@ -288,6 +287,9 @@ class Match extends EventEmitter {
         this.state = MatchState.gameplay
         this.turnLimit = this.map.rivers.length
         this.turnCount = 0
+
+        const playerNames = this.players.map((player, i) => new Object({punter: i, name: player.name}))
+        logger.log(JSON.stringify({start: playerNames}))
 
         this.rivers = {}
         this.all_claims = {}
@@ -370,6 +372,8 @@ class Match extends EventEmitter {
                 }
 
                 this.moves.push(valid_move)
+
+                logger.log(JSON.stringify(valid_move))
 
                 this.activePlayer = (this.activePlayer + 1) % this.maxPlayers
                 this.turnCount++;
@@ -512,7 +516,7 @@ class Match extends EventEmitter {
             scores: scores,
         }
 
-        logger.log(JSON.stringify(template))
+        logger.log(JSON.stringify({stop: template}))
 
         for (let i = 0; i < this.maxPlayers; i++) {
             let message = {stop: Object.assign({}, template)}
@@ -523,7 +527,7 @@ class Match extends EventEmitter {
             player.stopGame(message)
 
             this.moves.push(this._pass(this.activePlayer))
-            this.activePlayer++;
+            this.activePlayer = (this.activePlayer + 1) % this.maxPlayers
         }
 
         this.close()

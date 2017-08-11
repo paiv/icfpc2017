@@ -13,7 +13,7 @@ PORT="${PORT:-9000}"
 
 SERVER="${SERVER:-$MYDIR/../server/puntd.js}"
 
-MAP="${GAMEMAP:-$MYDIR/maps/sample.json}"
+MAP="${MAP:-$MYDIR/maps/sample.json}"
 PLAYERS="${PLAYERS:-2}"
 
 "$SERVER" --host "$HOST" --port "$PORT" --players "$PLAYERS" --map "$MAP"
