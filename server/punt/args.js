@@ -10,9 +10,9 @@ const defaultAddress = '0.0.0.0:9000'
 
 let env = {}
 
-env.host = process.env.HOST || defaultAddress
+env.host = process.env.HOST
 env.port = parseInt(process.env.PORT)
-env.map = process.env.MAP || defaultMap
+env.map = process.env.MAP
 env.players = parseInt(process.env.PLAYERS)
 env.futures = process.env.FUTURES
 env.options = process.env.OPTIONS

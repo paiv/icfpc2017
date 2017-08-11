@@ -44,46 +44,46 @@ Optional arguments:
 Docker image
 ------------
 
-
-# Build
-
-Build the image:
-
-```sh
-docker build -t paiv/puntd .
-```
-
 # Run
 
-##### Run once, random port
-
 ```sh
-docker run --rm -P paiv/puntd
+docker run --rm paiv/puntd /app/puntd.js -h
 ```
 
 ##### Bind to local port 9123
+
+Inside docker container, the service binds to port 9000. You need to translate
+from local port 9123 to container port 9000:
 
 ```sh
 docker run --rm -p 9123:9000 paiv/puntd
 ```
 
-##### Set game map
+##### Change map
+
+To run a map bundled inside container:
 
 ```sh
-docker run -e 'MAP=maps/lambda.json' --rm -p 9123:9000 paiv/puntd
+docker run --rm -p 9123:9000 paiv/puntd \
+    /app/puntd.js --map maps/circle.json
 ```
 
-Full control
+##### Local maps
+
+To run your maps, you can mount them into container:
 
 ```sh
-docker run \
-    -e 'MAP=maps/sample.json' \
-    -e 'PLAYERS=2' \
-    -e 'FUTURES=1' \
-    -e 'SPLURGES=1' \
-    -e 'OPTIONS=1' \
-    -e 'HANDSHAKE_TIMEOUT=1' \
-    -e 'SETUP_TIMEOUT=10' \
-    -e 'MOVE_TIMEOUT=1' \
-    --rm -p 9123:9000 paiv/puntd
+docker run --rm -p 9123:9000 \
+    -v $PWD/mymaps:/app/mymaps \
+    paiv/puntd \
+    /app/puntd.js --map mymaps/some.json
+```
+
+
+# Build
+
+To build docker image from source:
+
+```sh
+docker build -t paiv/puntd .
 ```
