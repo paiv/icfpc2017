@@ -11,6 +11,12 @@ from imagemagick import ImageMagick
 from operator import itemgetter
 
 
+class LogFormat:
+    AUTO = 0
+    SERVER = 1
+    CLIENT = 2
+
+
 class GameBoard:
     def __init__(self):
         self.graph = dot.Graph(directed=False)
@@ -147,14 +153,14 @@ class GameBoard:
 
 class LogAnimator:
 
-    def __init__(self, fps=1.0, loop=False, save_frames=None, limit=None, silent=False):
+    def __init__(self, fps=1.0, loop=False, save_frames=None, max_frames=None, log_format=None, silent=False):
         self.fps = fps
         self.loop = loop
         self.save_frames = save_frames
-        self.max_frames = limit or 0
+        self.max_frames = max_frames or 0
+        self.log_format = log_format or LogFormat.AUTO
         self.silent = silent
         self.frame_count = 0
-        self.max_frames = 0
 
     def process(self, logfile, target):
 
@@ -200,36 +206,63 @@ class LogAnimator:
 
             if state == STATE_HANDSHAKE:
                 if message.get('map', None) is not None:
+                    state = STATE_SETUP
+
                     player_id = message['punter']
                     players = message['punters']
                     mapobj = message['map']
 
-                    board = self._setup_board(player_id, players, mapobj)
-
-                    state = STATE_SETUP
+                    board = self._setup_board(player_id, players, mapobj, target=target)
 
             elif state == STATE_SETUP:
                 if message.get('ready', None) is not None:
-                    self._export_frame(board, target)
                     state = STATE_GAMEPLAY
 
+                    if self.log_format == LogFormat.AUTO:
+                        self.log_format = LogFormat.CLIENT
+
+                elif message.get('start', None) is not None:
+                    state = STATE_GAMEPLAY
+
+                    if self.log_format == LogFormat.AUTO:
+                        self.log_format = LogFormat.SERVER
+
             elif state == STATE_GAMEPLAY:
-                move = message.get('move', None)
-                if move is not None:
-                    self._update_board(board, move['moves'], target)
+                moves = None
+
+                if self.log_format == LogFormat.SERVER:
+                    claim = message.get('claim', None)
+                    option = message.get('option', None)
+                    splurge = message.get('splurge', None)
+
+                    move = claim or option or splurge
+                    if move is not None:
+                        moves = [message]
+
+                elif self.log_format == LogFormat.CLIENT:
+                    move = message.get('move', None)
+                    if move is not None:
+                        moves = move['moves']
+
+                if moves is not None:
+                    self._update_board(board, moves, target=target)
 
             elif state == STATE_SCORING:
                 stop = message.get('stop')
-                moves = stop['moves']
-                self._update_board(board, moves, target)
+                moves = stop.get('moves', None)
+                if moves is not None:
+                    self._update_board(board, moves, target=target)
 
-    def _setup_board(self, player_id, players, obj, title=None):
+    def _setup_board(self, player_id, players, obj, title=None, target=None):
         board = GameBoard()
         board.setup(player_id, players, obj)
 
+        self._export_frame(board, target=target)
+
         return board
 
-    def _update_board(self, board, moves, target):
+    def _update_board(self, board, moves, target=None):
+        # import pdb; pdb.set_trace()
         moves = [(next(iter(x.values())).get('punter', -1), x) for x in moves]
         moves = sorted(moves, key=itemgetter(0))
         l = [x for k,x in moves if k < board.player_id]
@@ -279,8 +312,8 @@ class LogAnimator:
         img.animate(from_dir, target, loop=loop, delay=delay)
 
 
-def do_viz(logfile, target, fps, loop, save_frames, max_frames, silent):
-    anim = LogAnimator(fps=fps, loop=loop, save_frames=save_frames, limit=max_frames, silent=silent)
+def do_viz(logfile, target, **kwargs):
+    anim = LogAnimator(**kwargs)
     anim.process(logfile, target)
 
 
@@ -294,28 +327,35 @@ if __name__ == '__main__':
 
     parser.add_argument('logfile', nargs='?', type=argparse.FileType(mode='r'),
         default=sys.stdin,
-        help='client log file')
+        help='source log file')
 
     parser.add_argument('target', nargs='?', type=argparse.FileType(mode='w'),
         default=sys.stdout.buffer,
         help='target gif file')
 
-    parser.add_argument('-f', '--fps', metavar='F', type=float, default=2.0,
+    parser.add_argument('-f', '--fps', metavar='FPS', type=float, default=2.0,
         help='animation frames per second')
 
     parser.add_argument('-l', '--loop', action='store_true',
         help='loop animation')
 
-    parser.add_argument('-n', '--max-frames', metavar='N', type=int, default=None,
+    parser.add_argument('-n', '--max-frames', metavar='LIMIT', type=int, default=None,
         help='stop generating after N frames')
 
-    parser.add_argument('-p', '--save-frames', metavar='P', type=str, default=None,
+    parser.add_argument('-p', '--save-frames', metavar='DIR', type=str, default=None,
         help='directory to save frame images')
+
+    parser.add_argument('--server', action='store_true',
+        help='server log format')
 
     parser.add_argument('-s', '--silent', action='store_true',
         help='be quiet')
 
     args = parser.parse_args()
+
+
+    log_format = LogFormat.SERVER if args.server else LogFormat.AUTO
+
 
     do_viz(
         logfile=args.logfile,
@@ -324,5 +364,6 @@ if __name__ == '__main__':
         loop=args.loop,
         save_frames=args.save_frames,
         max_frames=args.max_frames,
+        log_format=log_format,
         silent=args.silent,
         )

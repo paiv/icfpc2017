@@ -19,20 +19,23 @@ Usage
 -----
 
 ```
-usage: gva.py [-h] [-f F] [-l] [-n N] [-p P] [-s] [logfile] [target]
+usage: gva.py [-h] [-f FPS] [-l] [-n LIMIT] [-p DIR] [--server] [-s]
+              [logfile] [target]
 
 Graph visualizer animated
 
 positional arguments:
-  logfile               client log file
+  logfile               source log file
   target                target gif file
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f F, --fps F         animation frames per second
+  -f FPS, --fps FPS     animation frames per second
   -l, --loop            loop animation
-  -n N, --max-frames N  stop generating after N frames
-  -p P, --save-frames P
+  -n LIMIT, --max-frames LIMIT
+                        stop generating after N frames
+  -p DIR, --save-frames DIR
                         directory to save frame images
+  --server              server log format
   -s, --silent          be quiet
 ```
