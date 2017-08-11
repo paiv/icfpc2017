@@ -9,13 +9,16 @@ MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-9000}"
 
+PLAYERS=4
 CLIENT1="${1:-$MYDIR/../code/online.py}"
 CLIENT2="${2:-$MYDIR/../code/online.py}"
 CLIENT3="${1:-$MYDIR/../code/online.py}"
 CLIENT4="${1:-$MYDIR/../code/online.py}"
 
 
-PLAYERS=4 ./server-ext-all.sh &
+./server-ext-all.sh | \
+    ( [[ "$LOGFILE" ]] && tee "$LOGFILE" || cat ) &
+
 SERVER_PID=$(jobs -p)
 
 LOOP=0
@@ -26,9 +29,9 @@ do
 done 2> /dev/null
 
 
-"$CLIENT1" -s --name player1 --host "$HOST" --port "$PORT" --log client1.log &
-"$CLIENT2" -s --name player2 --host "$HOST" --port "$PORT" --log client2.log &
-"$CLIENT3" -s --name player3 --host "$HOST" --port "$PORT" --log client3.log &
-"$CLIENT4" -s --name player4 --host "$HOST" --port "$PORT" --log client4.log
+"$CLIENT1" --name player1 --host "$HOST" --port "$PORT" -s --no-log &
+"$CLIENT2" --name player2 --host "$HOST" --port "$PORT" -s --no-log &
+"$CLIENT3" --name player3 --host "$HOST" --port "$PORT" -s --no-log &
+"$CLIENT4" --name player4 --host "$HOST" --port "$PORT" -s --no-log
 
 wait $SERVER_PID

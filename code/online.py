@@ -142,8 +142,8 @@ class OfflinePlayer(Player):
         self.state = None
         self.proc = None
         self.transport = None
-        logfile = logfile or 'client.log'
-        self.clientlog = io.open(logfile, 'a', 1)
+
+        self.clientlog = io.open(logfile, 'a', 1) if logfile else subprocess.DEVNULL
 
     def __enter__(self):
         pass
@@ -357,6 +357,9 @@ if __name__ == '__main__':
     parser.add_argument('--log', type=str, default='client.log',
         help='client log file')
 
+    parser.add_argument('--no-log', action='store_true',
+        help='suppress client log')
+
     parser.add_argument('-s', '--silent', action='store_true',
         help='be quiet')
 
@@ -368,5 +371,5 @@ if __name__ == '__main__':
         host=args.host,
         port=args.port,
         cmd=args.cmd,
-        logfile=args.log,
+        logfile=(None if args.no_log else args.log),
         silent=args.silent)
