@@ -5,6 +5,21 @@ const argparse = require('argparse')
 
 
 const defaultMap = path.join('maps', 'sample.json')
+const defaultAddress = '0.0.0.0:9000'
+
+
+let env = {}
+
+env.host = process.env.HOST || defaultAddress
+env.port = parseInt(process.env.PORT)
+env.map = process.env.MAP || defaultMap
+env.players = parseInt(process.env.PLAYERS)
+env.futures = process.env.FUTURES
+env.options = process.env.OPTIONS
+env.splurges = process.env.SPLURGES
+env.handshake_timeout = parseInt(process.env.HANDSHAKE_TIMEOUT)
+env.setup_timeout = parseInt(process.env.SETUP_TIMEOUT)
+env.move_timeout = parseInt(process.env.MOVE_TIMEOUT)
 
 
 const parser = new argparse.ArgumentParser({
@@ -13,8 +28,8 @@ const parser = new argparse.ArgumentParser({
 
 parser.addArgument(['-b', '--host', '--bind-address'], {
     metavar: 'HOST',
-    defaultValue: 'localhost:9000',
-    help: 'Listen address, localhost:9000',
+    defaultValue: defaultAddress,
+    help: `Listen address, ${defaultAddress}`,
 })
 
 parser.addArgument(['-p', '--port', '--bind-port'], {
@@ -26,7 +41,7 @@ parser.addArgument(['-p', '--port', '--bind-port'], {
 
 parser.addArgument(['-m', '--map'], {
     defaultValue: defaultMap,
-    help: `Game map (${defaultMap})`,
+    help: `Game map, ${defaultMap}`,
 })
 
 parser.addArgument(['-n', '--players'], {
@@ -52,21 +67,18 @@ parser.addArgument(['-s', '--splurges'], {
 
 parser.addArgument(['-th', '--handshake-timeout'], {
     type: 'int',
-    metavar: 'HANDSHAKE',
     defaultValue: 1,
     help: 'Player timeout on handshake (until "me"), 1 sec',
 })
 
 parser.addArgument(['-ts', '--setup-timeout'], {
     type: 'int',
-    metavar: 'SETUP',
     defaultValue: 10,
     help: 'Player timeout on setup (until "ready"), 10 sec',
 })
 
 parser.addArgument(['-tm', '--move-timeout'], {
     type: 'int',
-    metavar: 'MOVE',
     defaultValue: 1,
     help: 'Player timeout on each move (until response received fully), 1 sec',
 })
@@ -75,20 +87,27 @@ parser.addArgument(['-tm', '--move-timeout'], {
 let args = parser.parseArgs()
 
 
-const address = args.host.split(':'),
-    host = address.shift(),
-    port = args.port || parseInt(address.shift())
+let opts = {}
 
-args.host = host
-args.port = port
-
-args.timeouts = {
-    handshake: args.handshake_timeout * 1000,
-    setup: args.setup_timeout * 1000,
-    move: args.move_timeout * 1000,
+for (let key in env) {
+    opts[key] = env[key] || args[key]
 }
 
-args.map = require(path.resolve(args.map))
+
+const address = opts.host.split(':'),
+    host = address.shift(),
+    port = opts.port || parseInt(address.shift())
+
+opts.host = host
+opts.port = port
+
+opts.timeouts = {
+    handshake: opts.handshake_timeout * 1000,
+    setup: opts.setup_timeout * 1000,
+    move: opts.move_timeout * 1000,
+}
+
+opts.map = require(path.resolve(opts.map))
 
 
-module.exports = args
+module.exports = opts

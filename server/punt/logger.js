@@ -2,8 +2,22 @@
 
 
 class Logger {
+    constructor() {
+        this.DEBUG = false
+    }
+
     log() {
         console.log(...arguments)
+    }
+
+    error() {
+        console.error(...arguments)
+    }
+
+    debug() {
+        if (this.DEBUG) {
+            console.error(...arguments)
+        }
     }
 }
 

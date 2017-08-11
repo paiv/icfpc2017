@@ -31,7 +31,7 @@ class Client {
                         var message = JSON.parse(body.toString())
                     }
                     catch (e) {
-                        logger.log(this.name, e.message)
+                        logger.error(this.name, e.message)
                         this.socket.destroy()
                         return
                     }
@@ -45,7 +45,12 @@ class Client {
     send(message) {
         const json = JSON.stringify(message)
         const packet = `${json.length}:${json}`
-        this.socket.write(packet)
+        try {
+            this.socket.write(packet)
+        }
+        catch (e) {
+            logger.error(this.name, e.message)
+        }
     }
 }
 

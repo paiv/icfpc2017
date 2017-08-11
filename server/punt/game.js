@@ -176,9 +176,14 @@ class Match extends EventEmitter {
     }
 
     kickPlayer(player) {
-        const idx = this.players.indexOf(player)
-        this.players.splice(idx, 1)
-        player.kick()
+        if (this.state == MatchState.handshake) {
+            const idx = this.players.indexOf(player)
+            this.players.splice(idx, 1)
+            player.kick()
+        }
+        else {
+            player.zombie = true
+        }
     }
 
     playerTimeout(player) {
