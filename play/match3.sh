@@ -9,9 +9,10 @@ MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-9000}"
 
-PLAYERS=2
+PLAYERS=3
 CLIENT1="${1:-$MYDIR/../code/online.py}"
 CLIENT2="${2:-$MYDIR/../code/online.py}"
+CLIENT3="${1:-$MYDIR/../code/online.py}"
 
 export HOST PORT PLAYERS
 
@@ -31,6 +32,7 @@ done 2> /dev/null
 
 
 "$CLIENT1" --name player1 --host "$HOST" --port "$PORT" -s --no-log &
-"$CLIENT2" --name player2 --host "$HOST" --port "$PORT" -s --no-log
+"$CLIENT2" --name player2 --host "$HOST" --port "$PORT" -s --no-log &
+"$CLIENT3" --name player3 --host "$HOST" --port "$PORT" -s --no-log
 
 wait $SERVER_PID

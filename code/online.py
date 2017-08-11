@@ -286,7 +286,7 @@ class PunterServer:
         if port is not None:
             self.transport = self._connect(port)
         else:
-            for n in range(10,0,-1):
+            for n in range(0, 10):
                 port = self.PORT_BASE + n
                 self.transport = self._connect(port)
                 if self.transport is not None:

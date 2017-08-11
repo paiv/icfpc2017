@@ -15,11 +15,14 @@ CLIENT2="${2:-$MYDIR/../code/online.py}"
 CLIENT3="${1:-$MYDIR/../code/online.py}"
 CLIENT4="${1:-$MYDIR/../code/online.py}"
 
+export HOST PORT PLAYERS
+
 
 ./server-ext-all.sh | \
     ( [[ "$LOGFILE" ]] && tee "$LOGFILE" || cat ) &
 
 SERVER_PID=$(jobs -p)
+
 
 LOOP=0
 until nc -z "$HOST" "$PORT"
