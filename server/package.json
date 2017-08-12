@@ -1,14 +1,16 @@
 {
-  "name": "puntd",
-  "version": "1.0.0",
-  "description": "Punting Server",
-  "main": "puntd.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "paiv",
-  "license": "MIT",
-  "dependencies": {
-    "argparse": "^1.0.9"
-  }
+    "name": "puntd",
+    "version": "1.0.1",
+    "description": "Punting Server",
+    "repository": "paiv/icfpc2017",
+    "author": "paiv",
+    "license": "MIT",
+    "homepage": "https://github.com/paiv/icfpc2017",
+    "scripts": {
+        "start": "node puntd.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "argparse": "^1.0.9"
+    }
 }

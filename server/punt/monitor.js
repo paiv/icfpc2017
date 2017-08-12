@@ -1,7 +1,7 @@
 
 const http = require('http')
     , logger = require('./logger')
-    , packageVersion = require('../package.json').version
+    , packagejson = require('../package.json')
 
 
 class CacheItem {
@@ -93,7 +93,8 @@ class Monitor {
     _serverStats() {
         return {
             uptime: Math.floor(process.uptime()),
-            version: packageVersion,
+            version: packagejson.version,
+            homepage: packagejson.homepage,
         }
     }
 
