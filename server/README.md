@@ -15,8 +15,9 @@ Usage
 -----
 
 ```
-usage: puntd.js [-h] [-b HOST] [-p PORT] [-m MAP] [-n PLAYERS] [-f] [-o] [-s]
-                [-th HANDSHAKE_TIMEOUT] [-ts SETUP_TIMEOUT] [-tm MOVE_TIMEOUT]
+usage: puntd.js [-h] [-b HOST] [-p PORT] [-w MONITOR] [-m MAP] [-n PLAYERS]
+                [-f] [-o] [-s] [-th HANDSHAKE_TIMEOUT] [-ts SETUP_TIMEOUT]
+                [-tm MOVE_TIMEOUT]
 
 
 Punter Server (paiv)
@@ -27,6 +28,8 @@ Optional arguments:
                         Listen address, 0.0.0.0:9000
   -p PORT, --port PORT, --bind-port PORT
                         Listen port
+  -w MONITOR, --monitor-port MONITOR
+                        Monitoring port (http), 8080
   -m MAP, --map MAP     Game map, maps/sample.json
   -n PLAYERS, --players PLAYERS
                         Number of players, 2
@@ -55,7 +58,7 @@ docker run --rm paiv/puntd /app/puntd.js -h
 #### Bind to local port 9123
 
 Inside docker container, the service binds to port 9000. You need to translate
-from local port 9123 to container port 9000:
+between local port 9123 and container 9000:
 
 ```sh
 docker run --rm -p 9123:9000 paiv/puntd
@@ -79,6 +82,14 @@ docker run --rm -p 9123:9000 \
     -v $PWD/mymaps:/app/mymaps \
     paiv/puntd \
     /app/puntd.js --map mymaps/some.json
+```
+
+#### Monitoring
+
+Simple monitoring service runs on port 8080. You might want to expose it too:
+
+```sh
+docker run --rm -p 9123:9000 -p 8080:8080 paiv/puntd
 ```
 
 

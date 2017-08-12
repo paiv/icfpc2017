@@ -12,6 +12,7 @@ class Client {
         this.data = new Buffer([])
 
         socket.on('data', (chunk) => this.read(chunk))
+        player.on('message', (message) => this.send(message))
     }
 
     read(chunk) {
@@ -71,7 +72,10 @@ class Server {
         this.conn = net.createServer(onClientConnected)
 
         // this.conn.maxConnections = this.maxClients + 2 // monitoring
-        this.conn.listen(port, host)
+        this.conn.listen(port, host, () => {
+            const addr = this.conn.address()
+            logger.debug(`listening on ${addr.address}:${addr.port}`)
+        })
 
         function onClientConnected(socket) {
             if (!match.isOpenForNewPlayers()) {
@@ -91,8 +95,6 @@ class Server {
 
             const client = new Client(socket, player)
             server.clients.push(client)
-
-            player.on('message', (message) => client.send(message))
         }
     }
 

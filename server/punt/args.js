@@ -6,12 +6,14 @@ const argparse = require('argparse')
 
 const defaultMap = path.join('maps', 'sample.json')
 const defaultAddress = '0.0.0.0:9000'
+const defaultMonitorPort = 8080
 
 
 let env = {}
 
 env.host = process.env.HOST
 env.port = parseInt(process.env.PORT)
+env.monitor_port = parseInt(process.env.MONITOR_PORT)
 env.map = process.env.MAP
 env.players = parseInt(process.env.PLAYERS)
 env.futures = process.env.FUTURES
@@ -37,6 +39,13 @@ parser.addArgument(['-p', '--port', '--bind-port'], {
     metavar: 'PORT',
     defaultValue: undefined,
     help: 'Listen port',
+})
+
+parser.addArgument(['-w', '--monitor-port'], {
+    type: 'int',
+    metavar: 'MONITOR',
+    defaultValue: defaultMonitorPort,
+    help: `Monitoring port (http), ${defaultMonitorPort}`,
 })
 
 parser.addArgument(['-m', '--map'], {
@@ -107,7 +116,10 @@ opts.timeouts = {
     move: opts.move_timeout * 1000,
 }
 
-opts.map = require(path.resolve(opts.map))
+
+const filename = path.resolve(opts.map)
+opts.map = require(filename)
+opts.map.name = path.basename(filename)
 
 
 module.exports = opts

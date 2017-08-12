@@ -32,15 +32,12 @@ class Player extends EventEmitter {
     }
 
     close() {
+        this.zombie = true
         this.state = PlayerState.closed
 
         timers.clearTimeout(this.handshakeTimeout)
 
         this.emit('close')
-    }
-
-    kick() {
-        this.close()
     }
 
     receive(message) {
@@ -105,7 +102,9 @@ class Player extends EventEmitter {
 
     requestMove(message) {
         if (this.zombie) {
-            this._move({pass: {punter: this.id}})
+            setImmediate(() =>
+                this._move({pass: {punter: this.id}})
+            )
         }
         else {
             this.moveTimeout = timers.setTimeout(() => this._timeout(), this.timeouts.move)
@@ -120,6 +119,7 @@ class Player extends EventEmitter {
 
     stopGame(message) {
         this.send(message)
+        this.close()
     }
 }
 
@@ -136,7 +136,12 @@ class Match extends EventEmitter {
     constructor(map, players, futures, options, splurges, timeouts) {
         super()
 
+        this.mapName = map.name
+        delete map.name
+
         this.map = map
+        this.map_distance = this._calc_distance(map.mines, map.sites, map.rivers)
+
         this.maxPlayers = players
         this.ext_futures = futures
         this.ext_options = options
@@ -152,21 +157,24 @@ class Match extends EventEmitter {
     }
 
     isOpenForNewPlayers() {
+        if (this.state != MatchState.handshake) {
+            return false
+        }
+        if (this.players.length >= this.maxPlayers) {
+            return false
+        }
         return true
     }
 
     registerNewPlayer() {
-        if (this.state != MatchState.handshake) {
-            return
-        }
-        if (this.players.length >= this.maxPlayers) {
+        if (!this.isOpenForNewPlayers()) {
             return
         }
 
         const player = new Player(this.timeouts)
         this.players.push(player)
 
-        player.once('close', () => this.kickPlayer(player))
+        player.on('close', () => this.kickPlayer(player))
         player.on('handshake', () => this.handshake(player))
         player.on('ready', (message) => this.ready(player, message))
         player.on('move', (message) => this.commitMove(player, message))
@@ -176,10 +184,12 @@ class Match extends EventEmitter {
     }
 
     kickPlayer(player) {
-        if (this.state == MatchState.handshake) {
+        if (this.state == MatchState.handshake || this.state == MatchState.scoring) {
             const idx = this.players.indexOf(player)
-            this.players.splice(idx, 1)
-            player.kick()
+            if (idx >= 0) {
+                this.players.splice(idx, 1)
+                player.close()
+            }
         }
         else {
             player.zombie = true
@@ -213,16 +223,16 @@ class Match extends EventEmitter {
             }
         }
         else {
-            player.kick()
+            player.close()
         }
     }
 
     setup() {
         this.state = MatchState.setup
 
-        this.futures = new Array(this.maxPlayers)
-
         this.players = random.shuffle(this.players)
+
+        this.futures = new Array(this.maxPlayers)
 
         let template = {
             punter: 0,
@@ -268,7 +278,7 @@ class Match extends EventEmitter {
             }
         }
         else {
-            player.kick()
+            player.close()
         }
     }
 
@@ -513,12 +523,16 @@ class Match extends EventEmitter {
     }
 
     stopGame() {
+        const players = this.players.slice()
+        const playerNames = players.map((player) => player.name)
+
         this.state = MatchState.scoring
 
         const scores = this._scores()
+        this.scores = this._zipPlayerScores(playerNames, scores)
 
         let template = {
-            scores: scores,
+            scores: this.scores,
         }
 
         logger.log(JSON.stringify({stop: template}))
@@ -528,19 +542,29 @@ class Match extends EventEmitter {
 
             message.stop.moves = this._lastMoves()
 
-            const player = this.players[this.activePlayer]
+            const player = players[this.activePlayer]
             player.stopGame(message)
 
             this.moves.push(this._pass(this.activePlayer))
             this.activePlayer = (this.activePlayer + 1) % this.maxPlayers
         }
 
-        this.close()
+        timers.setTimeout(() => this._restartGame(), 5000)
+    }
+
+    _restartGame() {
+        this.state = MatchState.handshake
+    }
+
+    _zipPlayerScores(playerNames, scores) {
+        const table = {}
+        scores.forEach((obj) =>
+            table[obj.punter] = obj.score
+        )
+        return playerNames.map((name, i) => new Object({name: name, score: table[i]}))
     }
 
     _scores() {
-        let distance = this._calc_distance(this.map.mines, this.map.sites, this.map.rivers)
-
         let res = new Array(this.maxPlayers)
 
         for (let playerId = 0; playerId < this.maxPlayers; playerId++) {
@@ -560,7 +584,7 @@ class Match extends EventEmitter {
             this.map.mines.forEach((mine) => {
                 claims.forEach((site) => {
                     const link = `${mine}-${site}`
-                    const d = distance[link] || 0
+                    const d = this.map_distance[link] || 0
                     const w = d * d
 
                     if (connected[link]) {
@@ -575,7 +599,7 @@ class Match extends EventEmitter {
                 futures.forEach((future) => {
                     const link = `${future.source}-${future.target}`
 
-                    const d = distance[link] || 0
+                    const d = this.map_distance[link] || 0
                     const w = d * d * d
 
                     if (connected[link]) {
@@ -635,6 +659,54 @@ class Match extends EventEmitter {
                 })
             }
         })
+
+        return res
+    }
+
+    mapInfo() {
+        return {
+            name: this.mapName,
+            settings: {
+                futures: this.ext_futures,
+                splurges: this.ext_splurges,
+                options: this.ext_options,
+            },
+            players: this.maxPlayers,
+            timeouts: {
+                handshake: Math.round(this.timeouts.handshake / 10) / 100,
+                setup: Math.round(this.timeouts.setup / 10) / 100,
+                move: Math.round(this.timeouts.move / 10) / 100,
+            }
+        }
+    }
+
+    stats() {
+        const res = {}
+
+        let state = 'offline'
+        switch (this.state) {
+            case MatchState.handshake:
+                state = 'open'
+                break
+            case MatchState.setup:
+            case MatchState.gameplay:
+                state = 'playing'
+                break
+            case MatchState.scoring:
+                state = 'ended'
+                break
+        }
+
+        const players = this.players.map((player) => player.name)
+
+        res.state = state
+        res.total_spots = this.maxPlayers
+        res.spots = (this.state == MatchState.scoring) ? 0 : this.maxPlayers - players.length
+        res.players = this.players.map((player) => player.name)
+
+        if (this.state == MatchState.scoring) {
+          res.scores = this.scores
+        }
 
         return res
     }

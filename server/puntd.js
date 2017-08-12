@@ -6,6 +6,7 @@ const logger = require('./punt/logger')
     , args = require('./punt/args')
     , server = require('./punt/server')
     , game = require('./punt/game')
+    , monitor = require('./punt/monitor')
 
 
 const match = new game.Match(
@@ -19,7 +20,11 @@ const match = new game.Match(
 
 const srv = new server.Server(match, args.players)
 
+
+if (Number.isInteger(args.monitor_port)) {
+    const mon = new monitor.Monitor(srv, match)
+    mon.start(args.host, args.monitor_port)
+}
+
+
 srv.start(args.host, args.port)
-
-
-logger.debug(`listening on ${args.host}:${args.port}`)

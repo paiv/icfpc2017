@@ -3,7 +3,7 @@
 
 class Logger {
     constructor() {
-        this.DEBUG = false
+        this.DEBUG = process.env.DEBUG
     }
 
     log() {
