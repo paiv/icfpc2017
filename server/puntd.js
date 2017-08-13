@@ -22,7 +22,7 @@ const srv = new server.Server(match, args.players)
 
 
 if (Number.isInteger(args.monitor_port)) {
-    const mon = new monitor.Monitor(srv, match)
+    const mon = new monitor.Monitor(srv, match, args.public_url)
     mon.start(args.host, args.monitor_port)
 }
 

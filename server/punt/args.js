@@ -22,6 +22,7 @@ env.splurges = process.env.SPLURGES
 env.handshake_timeout = parseInt(process.env.HANDSHAKE_TIMEOUT)
 env.setup_timeout = parseInt(process.env.SETUP_TIMEOUT)
 env.move_timeout = parseInt(process.env.MOVE_TIMEOUT)
+env.public_url = process.env.PUBLIC_URL
 
 
 const parser = new argparse.ArgumentParser({
@@ -91,6 +92,12 @@ parser.addArgument(['-tm', '--move-timeout'], {
     defaultValue: 1,
     help: 'Player timeout on each move (until response received fully), 1 sec',
 })
+
+parser.addArgument(['-url', '--public-url'], {
+    defaultValue: undefined,
+    help: 'Public URL to access this server',
+})
+
 
 
 let args = parser.parseArgs()

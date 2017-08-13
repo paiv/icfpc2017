@@ -1,3 +1,4 @@
+'use strict'
 
 const http = require('http')
     , logger = require('./logger')
@@ -23,9 +24,10 @@ class CacheItem {
 
 
 class Monitor {
-    constructor(server, match) {
+    constructor(server, match, public_url) {
         this.server = server
         this.match = match
+        this.public_url = public_url
     }
 
     start(host, port) {
@@ -98,11 +100,17 @@ class Monitor {
     }
 
     _serverStats() {
-        return {
+        let res = {
             uptime: Math.floor(process.uptime()),
             version: packagejson.version,
             homepage: packagejson.homepage,
         }
+
+        if (this.public_url) {
+            res.public_url = this.public_url
+        }
+
+        return res
     }
 
     _mapInfo() {
