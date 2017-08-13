@@ -17,6 +17,7 @@ function update(obj) {
     if (!obj) return;
 
     var nodes = obj.nodes || [];
+    nodes = nodes.slice().sort(function(a, b) { return Number.parseInt(a.id) - Number.parseInt(b.id)})
 
     for (var i = 0; i < nodes.length; i++) {
         var node = nodes[i] || {};
