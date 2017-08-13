@@ -1,0 +1,14 @@
+
+#table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+#table td {
+    border: 1px solid #ccc;
+}
+
+#table th {
+    border: 1px solid #ccc;
+}

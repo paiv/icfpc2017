@@ -1,0 +1,32 @@
+html
+  head
+    title Punting Server (paiv)
+    meta(name='viewport', content='width=device-width, initial-scale=1.0')
+    link(rel='stylesheet', type='text/css', href='css/main.css')
+
+  body
+    h1 Punting Server
+
+    div
+      a(href='https://github.com/paiv/icfpc2017') https://github.com/paiv/icfpc2017
+
+    br
+    br
+
+    table#table
+      thead
+        tr
+          th Port
+          th Spots
+          th Players
+          th Status
+          th Settings
+      tbody
+
+    script(type='text/javascript' src='js/status.js')
+
+    script(type='text/javascript').
+      window.onload = function() {
+        requestUpdate();
+        setInterval(requestUpdate, 2000);
+      };

@@ -1,0 +1,19 @@
+{
+  "name": "puntd-frontend",
+  "version": "1.0.0",
+  "description": "Web frontend for paiv/puntd",
+  "repository": "paiv/icfpc2017",
+  "author": "paiv",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "apicache": "^0.8.7",
+    "argparse": "^1.0.9",
+    "express": "^4.15.4",
+    "pug": "^2.0.0-rc.3"
+  }
+}
