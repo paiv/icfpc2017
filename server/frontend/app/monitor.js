@@ -29,7 +29,7 @@ class Monitor {
         this.nodes = nodes || []
 
         let status = {}
-        this.nodes.forEach((node) => status[node.port] = {id: node.port})
+        this.nodes.forEach((node, i) => status[this._nodeId(node)] = {id: i})
         this.nodeStatus = status
     }
 
@@ -43,17 +43,20 @@ class Monitor {
         })
     }
 
+    _nodeId(node) {
+        return `${node.hostname}:${node.port}`
+    }
+
     _updateNode(node, response) {
-        const status = {
-            id: node.port,
-        }
+        const nodeId = this._nodeId(node)
+        const status = Object.assign({}, this.nodeStatus[nodeId] || {})
 
         Object.assign(status, response || {})
 
         const match = response && response.match || {}
         status.state = match.state || 'offline'
 
-        this.nodeStatus[node.port] = status
+        this.nodeStatus[nodeId] = status
     }
 
     status() {
@@ -69,7 +72,7 @@ class Monitor {
         nodes.sort((a, b) => a.port - b.port)
 
         const status = {
-            nodes: nodes.map((node) => Object.assign({}, this.nodeStatus[node.port]))
+            nodes: nodes.map((node) => Object.assign({}, this.nodeStatus[this._nodeId(node)]))
         }
 
         this.cache = new CacheItem(status, 1000)
