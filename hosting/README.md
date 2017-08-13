@@ -5,7 +5,6 @@ Hosting Punting Server
 ### Requirements
 
 - git
-- python
 - docker
 - docker-compose
 
@@ -22,7 +21,7 @@ Generate app declaration for your domain
 
 ```sh
 cd icfpc2017/hosting
-./install example.com
+./init.sh example.com
 ```
 
 Edit `docker-compose.yml`, take note of public ports (80, 9001-9016)

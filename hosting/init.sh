@@ -4,7 +4,7 @@ set -e
 PUBLIC_URL="$1"
 
 if [ -z "$PUBLIC_URL" ]; then
-    echo 'usage: ./install.sh public_url'
+    echo 'usage: ./init.sh public_url'
     exit 1
 fi
 

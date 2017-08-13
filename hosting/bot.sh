@@ -5,7 +5,7 @@ trap "kill 0" EXIT
 
 MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-HOST="TEMPLATE_HOST"
+HOST="${HOST:-TEMPLATE_HOST}"
 PORT="${1:-9001}"
 CMD="${2:-./punter}"
 
