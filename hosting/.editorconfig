@@ -1,0 +1,4 @@
+# http://editorconfig.org/
+
+[*.yml]
+indent_size = 2

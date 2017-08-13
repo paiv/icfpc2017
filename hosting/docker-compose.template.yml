@@ -1,0 +1,107 @@
+version: '3'
+services:
+
+  frontend:
+    build: ../server/frontend
+    ports:
+      - '80:8080'
+    command: >-
+      node index.js -r 2
+      http://sample2xxx:8080
+      http://circle2fso:8080
+      http://lambda2fso:8080
+      http://circle4fso:8080
+      http://lambda4fso:8080
+      http://random4fso:8080
+      http://oxford8fso:8080
+      http://edinburgh8fso:8080
+      http://boston8fso:8080
+      http://nara8fso:8080
+      http://oxford16fso:8080
+      http://edinburgh16fso:8080
+      http://boston16fso:8080
+      http://nara16fso:8080
+
+  sample2xxx:
+    image: paiv/puntd
+    ports:
+      - '9001:9000'
+    command: node puntd.js -m maps/sample.json -tm 2 -url TEMPLATE_HOST:9001
+
+  circle2fso:
+    image: paiv/puntd
+    ports:
+      - '9002:9000'
+    command: node puntd.js -m maps/circle.json -n 2 -f -s -o -tm 2 -url TEMPLATE_HOST:9002
+
+  lambda2fso:
+    image: paiv/puntd
+    ports:
+      - '9003:9000'
+    command: node puntd.js -m maps/lambda.json -n 2 -f -s -o -tm 2 -url TEMPLATE_HOST:9003
+
+  circle4fso:
+    image: paiv/puntd
+    ports:
+      - '9006:9000'
+    command: node puntd.js -m maps/circle.json -n 4 -f -s -o -tm 2 -url TEMPLATE_HOST:9006
+
+  lambda4fso:
+    image: paiv/puntd
+    ports:
+      - '9007:9000'
+    command: node puntd.js -m maps/lambda.json -n 4 -f -s -o -tm 2 -url TEMPLATE_HOST:9007
+
+  random4fso:
+    image: paiv/puntd
+    ports:
+      - '9008:9000'
+    command: node puntd.js -m maps/randomMedium.json -n 4 -f -s -o -tm 2 -url TEMPLATE_HOST:9008
+
+  oxford8fso:
+    image: paiv/puntd
+    ports:
+      - '9009:9000'
+    command: node puntd.js -m maps/oxford-sparse.json -n 8 -f -s -o -tm 2 -url TEMPLATE_HOST:9009
+
+  edinburgh8fso:
+    image: paiv/puntd
+    ports:
+      - '9010:9000'
+    command: node puntd.js -m maps/edinburgh-sparse.json -n 8 -f -s -o -tm 2 -url TEMPLATE_HOST:9010
+
+  boston8fso:
+    image: paiv/puntd
+    ports:
+      - '9011:9000'
+    command: node puntd.js -m maps/boston-sparse.json -n 8 -f -s -o -tm 2 -url TEMPLATE_HOST:9011
+
+  nara8fso:
+    image: paiv/puntd
+    ports:
+      - '9012:9000'
+    command: node puntd.js -m maps/nara-sparse.json -n 8 -f -s -o -tm 2 -url TEMPLATE_HOST:9012
+
+  oxford16fso:
+    image: paiv/puntd
+    ports:
+      - '9013:9000'
+    command: node puntd.js -m maps/oxford-sparse.json -n 16 -f -s -o -tm 2 -url TEMPLATE_HOST:9013
+
+  edinburgh16fso:
+    image: paiv/puntd
+    ports:
+      - '9014:9000'
+    command: node puntd.js -m maps/edinburgh-sparse.json -n 16 -f -s -o -tm 2 -url TEMPLATE_HOST:9014
+
+  boston16fso:
+    image: paiv/puntd
+    ports:
+      - '9015:9000'
+    command: node puntd.js -m maps/boston-sparse.json -n 16 -f -s -o -tm 2 -url TEMPLATE_HOST:9015
+
+  nara16fso:
+    image: paiv/puntd
+    ports:
+      - '9016:9000'
+    command: node puntd.js -m maps/nara-sparse.json -n 16 -f -s -o -tm 2 -url TEMPLATE_HOST:9016
