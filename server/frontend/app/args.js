@@ -16,7 +16,7 @@ env.refresh_delay = process.env.REFRESH_DELAY
 
 
 const parser = new argparse.ArgumentParser({
-    description: 'Frontend for Punter Server (paiv)',
+    description: 'Frontend for Punting Server (paiv/puntd)',
 })
 
 parser.addArgument(['-b', '--host', '--bind-address'], {
