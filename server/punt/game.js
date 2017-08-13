@@ -561,7 +561,7 @@ class Match extends EventEmitter {
         scores.forEach((obj) =>
             table[obj.punter] = obj.score
         )
-        return playerNames.map((name, i) => new Object({name: name, score: table[i]}))
+        return playerNames.map((name, i) => new Object({punter: i, score: table[i], name: name}))
     }
 
     _scores() {
