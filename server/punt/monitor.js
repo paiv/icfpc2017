@@ -45,6 +45,13 @@ class Monitor {
         }
 
         function serve(request, response) {
+            if (request.url !== '/') {
+                response.statusCode = 404
+                response.setHeader('Content-Type', 'text/plain')
+                response.end('404 Not Found')
+                return
+            }
+
             const res = monitor._cachedResponse()
 
             for (let name in res.headers) {
