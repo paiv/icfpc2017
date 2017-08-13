@@ -69,7 +69,7 @@ class Monitor {
         }
 
         const nodes = this.nodes.slice()
-        nodes.sort((a, b) => a.port - b.port)
+        nodes.sort((a, b) => Number.parseInt(a.port) - Number.parseInt(b.port))
 
         const status = {
             nodes: nodes.map((node) => Object.assign({}, this.nodeStatus[this._nodeId(node)]))

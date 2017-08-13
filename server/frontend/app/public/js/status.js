@@ -14,6 +14,8 @@ function update(obj) {
     var body = table.getElementsByTagName('tbody')[0];
     body.innerHTML = '';
 
+    if (!obj) return;
+
     var nodes = obj.nodes || [];
 
     for (var i = 0; i < nodes.length; i++) {
@@ -58,11 +60,13 @@ function onstatus(http) {
         try {
             var json = JSON.parse(http.responseText);
             update(json);
+            return
         }
         catch (e) {
             console.error(e);
         }
     }
+    update();
 }
 
 function requestUpdate() {
