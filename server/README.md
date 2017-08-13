@@ -8,7 +8,7 @@ Install
 
 ```sh
 npm install
-./puntd -h
+./puntd.js -h
 ```
 
 Usage
@@ -17,7 +17,7 @@ Usage
 ```
 usage: puntd.js [-h] [-b HOST] [-p PORT] [-w MONITOR] [-m MAP] [-n PLAYERS]
                 [-f] [-o] [-s] [-th HANDSHAKE_TIMEOUT] [-ts SETUP_TIMEOUT]
-                [-tm MOVE_TIMEOUT]
+                [-tm MOVE_TIMEOUT] [-url PUBLIC_URL]
 
 
 Punter Server (paiv)
@@ -43,6 +43,8 @@ Optional arguments:
   -tm MOVE_TIMEOUT, --move-timeout MOVE_TIMEOUT
                         Player timeout on each move (until response received
                         fully), 1 sec
+  -url PUBLIC_URL, --public-url PUBLIC_URL
+                        Public URL to access this server
 ```
 
 
