@@ -29,5 +29,5 @@ Optional arguments:
   -p PORT, --port PORT, --bind-port PORT
                         Listen port
   -r REFRESH_DELAY, --refresh-delay REFRESH_DELAY
-                        Refresh period, 15000 millis
+                        Refresh period, 15 sec
 ```

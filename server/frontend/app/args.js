@@ -5,7 +5,7 @@ const argparse = require('argparse')
 
 
 const defaultAddress = '0.0.0.0:8080'
-const defaultRefreshDelay = 15000
+const defaultRefreshDelay = 15
 
 
 let env = {}
@@ -35,7 +35,7 @@ parser.addArgument(['-p', '--port', '--bind-port'], {
 parser.addArgument(['-r', '--refresh-delay'], {
     type: 'int',
     defaultValue: defaultRefreshDelay,
-    help: `Refresh period, ${defaultRefreshDelay} millis`,
+    help: `Refresh period, ${defaultRefreshDelay} sec`,
 })
 
 parser.addArgument(['node'], {
@@ -60,7 +60,7 @@ const address = opts.host.split(':'),
 
 opts.host = host
 opts.port = port
-
+opts.refresh_delay = opts.refresh_delay * 1000
 opts.nodes = args.node.map((node) => url.parse(node))
 
 
