@@ -1,0 +1,14 @@
+diff -ruN ../paiv-full/src/main.cpp ./src/main.cpp
+--- ../paiv-full/src/main.cpp   2017-08-07 13:12:44.000000000 +0100
++++ ./src/main.cpp      2017-08-30 08:10:24.561438157 +0100
+@@ -1319,9 +1319,8 @@
+     auto rivers = _rivers_from_all(board.map.rivers, sites);
+
+     uuset avail;
+-    auto can_options = state.options_available[player_id] > 0;
+
+-    if (board.ext_options && can_options) {
++    if (board.ext_options && state.options_available[player_id] > 0) {
+         avail = _difference(rivers, state.options_taken);
+     }
+     else {
