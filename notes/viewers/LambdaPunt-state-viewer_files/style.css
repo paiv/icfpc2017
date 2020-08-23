@@ -1,0 +1,91 @@
+body { 
+  background: #555;
+  margin: 0;
+}
+a { 
+  color: #ddd;
+}
+input { 
+  background: #888;
+  border:1px solid #aaa;
+  color: #fff;
+}
+canvas {
+  float: left;
+  width: 50%;
+}
+table { 
+ float: left;
+ margin-left: 80%;
+ height: calc(100% - 37px);
+ position: absolute;
+ width: calc(20% - 4px);
+}
+
+#file { 
+  border: 1px solid #353535;
+  background: #8a8a8a;
+  color: #000;
+  padding-left: 2px 
+}
+
+#log { 
+  height: 100%;
+}
+
+input[type=button] { 
+ background: #9d9d9d;
+ height: 19px;
+ border: 1px solid #000;
+ color: #000;
+}
+
+.sigma-scene { 
+  background: #000;
+}
+#graph-container {
+  height: calc(100% - 37px);
+  position: absolute;
+  margin: auto;
+}
+#graph-container { 
+  width: 80%; 
+  float: left; 
+}
+::-webkit-scrollbar {
+  width: 11px;
+
+  background: #ddd;
+
+}
+::-webkit-scrollbar-track {
+  background: #979696;
+
+}
+
+::-webkit-scrollbar-thumb {
+  background: #585858;
+
+}
+
+#scoreboard {
+  margin-top: 10px;
+  margin-left: 10px;
+}
+
+#scoreboard .player-name {
+  width: 100px;
+  margin-right: 10px;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#scoreboard .player-swatch {
+  height: 10px;
+  width: 10px;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+

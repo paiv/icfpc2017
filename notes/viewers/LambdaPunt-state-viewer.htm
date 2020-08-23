@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- saved from url=(0081)http://gtg.kthxb.ai/~okay/icfpc/viewer/?game=b84ad11c-023d-4f70-8516-1aca8e9c8485 -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><link rel="stylesheet" href="./LambdaPunt-state-viewer_files/style.css">
+<script src="./LambdaPunt-state-viewer_files/jquery-3.2.1.min.js"></script>
+<script src="./LambdaPunt-state-viewer_files/sigma.min.js"></script>
+<script type="text/javascript" src="./LambdaPunt-state-viewer_files/viewer.js"> </script>
+
+
+    <title>LambdaPunt state viewer</title>
+</head>
+<body>
+    <div id="load">
+        <form enctype="multipart/form-data" method="post">
+            <input id="file" type="text" value="">
+            <input type="button" value="Load game json">
+            <label style="float: right; margin: 8px 8px 0 0; font-size:14px">left+right arrow keys to step through moves</label>
+        </form>
+    </div>
+    <div id="replay">
+        <a href="http://gtg.kthxb.ai/~okay/icfpc/viewer/?game=b84ad11c-023d-4f70-8516-1aca8e9c8485#begin">start</a>&nbsp;
+        <a href="http://gtg.kthxb.ai/~okay/icfpc/viewer/?game=b84ad11c-023d-4f70-8516-1aca8e9c8485#back">prev turn</a>&nbsp;
+        <a id="forward" href="http://gtg.kthxb.ai/~okay/icfpc/viewer/?game=b84ad11c-023d-4f70-8516-1aca8e9c8485#forward">step </a>&nbsp;
+        <a href="http://gtg.kthxb.ai/~okay/icfpc/viewer/?game=b84ad11c-023d-4f70-8516-1aca8e9c8485#end">end</a>
+    </div>
+    <div id="scoreboard"></div>
+    <div id="graph-container"><canvas class="sigma-scene" width="2030px" height="1236px" style="position: absolute; width: 1015px; height: 618px;"></canvas><canvas class="sigma-labels" width="2030px" height="1236px" style="position: absolute; width: 1015px; height: 618px;"></canvas><canvas class="sigma-mouse" width="2030px" height="1236px" style="position: absolute; width: 1015px; height: 618px;"></canvas></div>
+    <table border="1"><tbody><tr>
+        <td width="100%" style="vertical-align: top; background: #747474">
+            <div id="log" style="height: calc(100% -25px); width=100%; overflow-y: auto">The game was loaded<div id="turn0">Greedy Punter passed</div><div id="turn1">0 claimed 18-&gt;22</div><div id="turn2">Greedy Punter claimed 26-&gt;27</div><div id="turn3">0 claimed 4-&gt;18</div><div id="turn4">Greedy Punter claimed 29-&gt;32</div><div id="turn5">0 claimed 2-&gt;4</div><div id="turn6">Greedy Punter claimed 35-&gt;37</div><div id="turn7">0 claimed 2-&gt;23</div><div id="turn8">Greedy Punter claimed 21-&gt;22</div><div id="turn9">0 claimed 23-&gt;27</div><div id="turn10">Greedy Punter claimed 26-&gt;29</div><div id="turn11">0 claimed 0-&gt;23</div><div id="turn12">Greedy Punter claimed 2-&gt;26</div><div id="turn13">0 claimed 0-&gt;7</div><div id="turn14">Greedy Punter claimed 2-&gt;6</div><div id="turn15">0 claimed 7-&gt;34</div><div id="turn16">Greedy Punter claimed 6-&gt;35</div><div id="turn17">0 claimed 34-&gt;37</div><div id="turn18">Greedy Punter claimed 1-&gt;26</div><div id="turn19">0 claimed 10-&gt;34</div><div id="turn20">Greedy Punter claimed 1-&gt;4</div><div id="turn21">0 claimed 10-&gt;15</div><div id="turn22">Greedy Punter claimed 4-&gt;21</div><div id="turn23">0 claimed 19-&gt;22</div><div id="turn24">Greedy Punter claimed 31-&gt;32</div><div id="turn25">0 claimed 17-&gt;19</div><div id="turn26">Greedy Punter claimed 11-&gt;31</div><div id="turn27">0 claimed 10-&gt;33</div><div id="turn28">Greedy Punter claimed 11-&gt;14</div><div id="turn29">0 claimed 17-&gt;20</div><div id="turn30">Greedy Punter claimed 20-&gt;22</div><div id="turn31">0 claimed 13-&gt;33</div><div id="turn32">Greedy Punter claimed 33-&gt;37</div><div id="turn33">0 claimed 16-&gt;20</div><div id="turn34">Greedy Punter claimed 12-&gt;31</div><div id="turn35">0 claimed 5-&gt;18</div><div id="turn36">Greedy Punter claimed 16-&gt;21</div><div id="turn37">0 optioned 16-&gt;21</div><div id="turn38">Greedy Punter claimed 30-&gt;32</div><div id="turn39">0 claimed 13-&gt;36</div><div id="turn40">Greedy Punter claimed 7-&gt;35</div><div id="turn41">0 claimed 2-&gt;9</div><div id="turn42">Greedy Punter claimed 6-&gt;36</div><div id="turn43">0 claimed 9-&gt;28</div><div id="turn44">Greedy Punter claimed 12-&gt;28</div><div id="turn45">0 claimed 28-&gt;32</div><div id="turn46">Greedy Punter claimed 8-&gt;29</div><div id="turn47">0 optioned 31-&gt;32</div><div id="turn48">Greedy Punter claimed 24-&gt;27</div><div id="turn49">0 passed</div><div id="turn50">Greedy Punter claimed 3-&gt;24</div><div id="turn51">0 optioned 11-&gt;31</div><div id="turn52">Greedy Punter claimed 3-&gt;5</div><div id="turn53">0 passed</div><div id="turn54">Greedy Punter claimed 5-&gt;19</div><div id="turn55">0 passed</div><div id="turn56">Greedy Punter claimed 0-&gt;24</div><div id="turn57">0 passed</div><div id="turn58">Greedy Punter claimed 9-&gt;29</div><div id="turn59">0 passed</div><div id="turn60">Greedy Punter claimed 25-&gt;27</div><div id="turn61">0 passed</div></div>
+            <!--<div id="log"
+                 style="height: 240px; width=100%; overflow-y: scroll">
+            </div>-->
+        </td>
+    </tr></tbody></table>
+
+
+</body></html>
