@@ -9,7 +9,7 @@ class Client {
         this.socket = socket
         this.player = player
         this.name = `${socket.remoteAddress}:${socket.remotePort}`
-        this.data = new Buffer([])
+        this.data = Buffer.alloc(0)
 
         socket.on('data', (chunk) => this.read(chunk))
         player.on('message', (message) => this.send(message))

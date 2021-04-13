@@ -1,6 +1,6 @@
 {
   "name": "puntd-frontend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Web frontend for paiv/puntd",
   "repository": "paiv/icfpc2017",
   "author": "paiv",
@@ -11,9 +11,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "apicache": "^0.8.7",
-    "argparse": "^1.0.9",
-    "express": "^4.15.4",
-    "pug": "^2.0.0-rc.3"
+    "apicache": "1.x",
+    "argparse": "2.x",
+    "express": "4.x",
+    "pug": "3.x"
   }
 }

@@ -29,78 +29,78 @@ const parser = new argparse.ArgumentParser({
     description: 'Punter Server (paiv)',
 })
 
-parser.addArgument(['-b', '--host', '--bind-address'], {
+parser.add_argument('-b', '--host', '--bind-address', {
     metavar: 'HOST',
-    defaultValue: defaultAddress,
+    default: defaultAddress,
     help: `Listen address, ${defaultAddress}`,
 })
 
-parser.addArgument(['-p', '--port', '--bind-port'], {
+parser.add_argument('-p', '--port', '--bind-port', {
     type: 'int',
     metavar: 'PORT',
-    defaultValue: undefined,
+    default: undefined,
     help: 'Listen port',
 })
 
-parser.addArgument(['-w', '--monitor-port'], {
+parser.add_argument('-w', '--monitor-port', {
     type: 'int',
     metavar: 'MONITOR',
-    defaultValue: defaultMonitorPort,
+    default: defaultMonitorPort,
     help: `Monitoring port (http), ${defaultMonitorPort}`,
 })
 
-parser.addArgument(['-m', '--map'], {
-    defaultValue: defaultMap,
+parser.add_argument('-m', '--map', {
+    default: defaultMap,
     help: `Game map, ${defaultMap}`,
 })
 
-parser.addArgument(['-n', '--players'], {
+parser.add_argument('-n', '--players', {
     type: 'int',
-    defaultValue: 2,
+    default: 2,
     help: 'Number of players, 2',
 })
 
-parser.addArgument(['-f', '--futures'], {
-    action: 'storeTrue',
+parser.add_argument('-f', '--futures', {
+    action: 'store_true',
     help: 'Enable futures',
 })
 
-parser.addArgument(['-o', '--options'], {
-    action: 'storeTrue',
+parser.add_argument('-o', '--options', {
+    action: 'store_true',
     help: 'Enable options',
 })
 
-parser.addArgument(['-s', '--splurges'], {
-    action: 'storeTrue',
+parser.add_argument('-s', '--splurges', {
+    action: 'store_true',
     help: 'Enable splurges',
 })
 
-parser.addArgument(['-th', '--handshake-timeout'], {
+parser.add_argument('-th', '--handshake-timeout', {
     type: 'int',
-    defaultValue: 1,
+    default: 1,
     help: 'Player timeout on handshake (until "me"), 1 sec',
 })
 
-parser.addArgument(['-ts', '--setup-timeout'], {
+parser.add_argument('-ts', '--setup-timeout', {
     type: 'int',
-    defaultValue: 10,
+    default: 10,
     help: 'Player timeout on setup (until "ready"), 10 sec',
 })
 
-parser.addArgument(['-tm', '--move-timeout'], {
+parser.add_argument('-tm', '--move-timeout', {
     type: 'int',
-    defaultValue: 1,
+    default: 1,
     help: 'Player timeout on each move (until response received fully), 1 sec',
 })
 
-parser.addArgument(['-url', '--public-url'], {
-    defaultValue: undefined,
+parser.add_argument('-url', '--public-url', {
+    default: undefined,
     help: 'Public URL to access this server',
 })
 
 
 
-let args = parser.parseArgs()
+let args = parser.parse_args()
 
 
 let opts = {}

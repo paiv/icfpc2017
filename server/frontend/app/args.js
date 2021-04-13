@@ -19,32 +19,32 @@ const parser = new argparse.ArgumentParser({
     description: 'Frontend for Punting Server (paiv/puntd)',
 })
 
-parser.addArgument(['-b', '--host', '--bind-address'], {
+parser.add_argument('-b', '--host', '--bind-address', {
     metavar: 'HOST',
-    defaultValue: defaultAddress,
+    default: defaultAddress,
     help: `Listen address, ${defaultAddress}`,
 })
 
-parser.addArgument(['-p', '--port', '--bind-port'], {
+parser.add_argument('-p', '--port', '--bind-port', {
     type: 'int',
     metavar: 'PORT',
-    defaultValue: undefined,
+    default: undefined,
     help: 'Listen port',
 })
 
-parser.addArgument(['-r', '--refresh-delay'], {
+parser.add_argument('-r', '--refresh-delay', {
     type: 'int',
-    defaultValue: defaultRefreshDelay,
+    default: defaultRefreshDelay,
     help: `Refresh period, ${defaultRefreshDelay} sec`,
 })
 
-parser.addArgument(['node'], {
+parser.add_argument('node', {
     nargs: '*',
     help: 'Nodes to monitor',
 })
 
 
-let args = parser.parseArgs()
+let args = parser.parse_args()
 
 
 let opts = {}
